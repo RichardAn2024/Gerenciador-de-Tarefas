@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin - Mini Monday</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+    <div class="app-container">
+
+        <!-- ===== Cabeçalho ===== -->
+        <header class="header">
+            <div class="logo-area">
+                <div class="logo-icon">◆</div>
+                <div class="logo-text">Mini<span>Monday</span></div>
+                <span class="admin-badge">🔒 Admin</span>
+            </div>
+            <div class="header-right">
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalUsuarios">0</div>
+                        <div class="stat-label">Usuários</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalTarefasAdmin">0</div>
+                        <div class="stat-label">Tarefas</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalSubtarefasAdmin">0</div>
+                        <div class="stat-label">Subtarefas</div>
+                    </div>
+                </div>
+                <div class="user-info">
+                    <span id="adminName">Admin</span>
+                    <a href="index.html" class="btn btn-outline btn-sm">📋 Voltar</a>
+                    <button class="btn btn-outline btn-sm" id="logoutBtn">🚪 Sair</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- ===== Tabela de Usuários ===== -->
+        <div class="admin-panel">
+            <h2>👥 Usuários Cadastrados</h2>
+
+            <div class="table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Email</th>
+                            <th>Tarefas</th>
+                            <th>Admin</th>
+                            <th>Cadastro</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usuariosList">
+                        <tr>
+                            <td colspan="7" class="loading-text">Carregando usuários...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ===== MODAL DE CONFIRMAÇÃO ===== -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2 id="confirmTitle">⚠️ Confirmar</h2>
+                <button class="modal-close" id="closeConfirmBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage">Tem certeza que deseja fazer isso?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="cancelConfirmBtn">Cancelar</button>
+                <button class="btn btn-danger" id="confirmActionBtn">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="admin.js"></script>
+</body>
+
+</html>

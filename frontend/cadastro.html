@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cadastro - Mini Monday</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body class="auth-page">
+
+    <div class="auth-container">
+        <div class="auth-box">
+            <div class="auth-logo">
+                <div class="logo-icon">◆</div>
+                <div class="logo-text">Mini<span>Monday</span></div>
+            </div>
+
+            <h2>Criar conta</h2>
+            <p>Comece a gerenciar suas tarefas hoje</p>
+
+            <div id="mensagemErro" class="auth-error" style="display:none;"></div>
+
+            <form id="cadastroForm">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" id="cadastroNome" placeholder="Seu nome" required />
+                </div>
+
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="cadastroEmail" placeholder="seu@email.com" required />
+                </div>
+
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="password" id="cadastroSenha" placeholder="Mínimo 6 caracteres" required
+                        minlength="6" />
+                </div>
+
+                <div class="form-group">
+                    <label>Confirmar senha</label>
+                    <input type="password" id="cadastroConfirmarSenha" placeholder="Digite novamente" required />
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full">Criar conta</button>
+            </form>
+
+            <div class="auth-links">
+                <p>Já tem uma conta? <a href="login.html">Faça login</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+</body>
+
+</html>

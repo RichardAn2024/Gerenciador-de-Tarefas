@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mini Monday - Gestão de Tarefas</title>
+
+    <!-- ===== CSS externo ===== -->
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+    <div class="app-container">
+
+        <!-- ===== Cabeçalho ===== -->
+        <header class="header">
+            <div class="logo-area">
+                <div class="logo-icon">◆</div>
+                <div class="logo-text">Mini<span>Monday</span></div>
+            </div>
+            <div class="header-right">
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalTasks">0</div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="completedTasks">0</div>
+                        <div class="stat-label">Concluídas</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="pendingTasks">0</div>
+                        <div class="stat-label">Pendentes</div>
+                    </div>
+                </div>
+                <div class="user-info">
+                    <span id="userName">Usuário</span>
+                    <a href="admin.html" class="btn btn-outline btn-sm" id="adminLink" style="display:none;">👑
+                        Admin</a>
+                    <button class="btn btn-outline btn-sm" id="logoutBtn">🚪 Sair</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- ===== Barra de Ferramentas ===== -->
+        <div class="toolbar">
+            <button class="btn btn-primary" id="openCreateBtn">➕ Nova Tarefa</button>
+
+            <div class="filter-group">
+                <button class="filter-btn active" data-filter="all">Todas</button>
+                <button class="filter-btn" data-filter="todo">A fazer</button>
+                <button class="filter-btn" data-filter="doing">Em andamento</button>
+                <button class="filter-btn" data-filter="done">Concluídas</button>
+            </div>
+
+            <button class="btn btn-outline" id="clearAllBtn">🗑️ Limpar tudo</button>
+        </div>
+
+        <!-- ===== Board (Quadro Kanban) ===== -->
+        <div class="board" id="board">
+            <!-- Coluna 1: A Fazer -->
+            <div class="column" data-status="todo">
+                <div class="column-header">
+                    <div class="column-title">📋 A Fazer <span class="column-count" id="count-todo">0</span></div>
+                </div>
+                <div class="task-list" id="list-todo"></div>
+            </div>
+
+            <!-- Coluna 2: Em Andamento -->
+            <div class="column" data-status="doing">
+                <div class="column-header">
+                    <div class="column-title">⚡ Em Andamento <span class="column-count" id="count-doing">0</span></div>
+                </div>
+                <div class="task-list" id="list-doing"></div>
+            </div>
+
+            <!-- Coluna 3: Concluído -->
+            <div class="column" data-status="done">
+                <div class="column-header">
+                    <div class="column-title">✅ Concluído <span class="column-count" id="count-done">0</span></div>
+                </div>
+                <div class="task-list" id="list-done"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ===== MODAL DE CRIAÇÃO DE TAREFA ===== -->
+    <div class="modal-overlay" id="createModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>➕ Nova Tarefa</h2>
+                <button class="modal-close" id="closeCreateModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label for="createTitle">Título da tarefa:</label>
+                <input type="text" id="createTitle" placeholder="Digite o título da tarefa..." />
+
+                <label for="createTag">Tag:</label>
+                <select id="createTag">
+                    <option value="">Normal</option>
+                    <option value="urgent">🔴 Urgente</option>
+                    <option value="important">🟡 Importante</option>
+                    <option value="tranquilo">🔵 Tranquilo</option>
+                </select>
+
+                <label for="createResponsavel">👤 Responsável:</label>
+                <select id="createResponsavel">
+                    <option value="">Selecione um responsável...</option>
+                </select>
+
+                <div class="subtasks-section">
+                    <label>📋 Subtarefas:</label>
+                    <div id="subtaskList">
+                        <!-- Os campos de subtarefa serão adicionados aqui -->
+                    </div>
+                    <button class="btn btn-outline btn-sm" id="addSubtaskBtn">➕ Adicionar subtarefa</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="cancelCreateBtn">Cancelar</button>
+                <button class="btn btn-primary" id="saveCreateBtn">💾 Criar Tarefa</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL DE EDIÇÃO ===== -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>✏️ Editar Tarefa</h2>
+                <button class="modal-close" id="closeModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label for="editTitle">Título da tarefa:</label>
+                <input type="text" id="editTitle" placeholder="Digite o novo título..." />
+
+                <label for="editTag">Tag:</label>
+                <select id="editTag">
+                    <option value="">Normal</option>
+                    <option value="urgent">🔴 Urgente</option>
+                    <option value="important">🟡 Importante</option>
+                    <option value="tranquilo">🔵 Tranquilo</option>
+                </select>
+
+                <label for="editResponsavel">👤 Responsável:</label>
+                <select id="editResponsavel">
+                    <option value="">Selecione um responsável...</option>
+                </select>
+
+                <div class="subtasks-section">
+                    <label>📋 Subtarefas:</label>
+                    <div id="editSubtaskList">
+                        <!-- As subtarefas serão carregadas aqui -->
+                    </div>
+                    <button class="btn btn-outline btn-sm" id="addEditSubtaskBtn">➕ Adicionar subtarefa</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="cancelEditBtn">Cancelar</button>
+                <button class="btn btn-primary" id="saveEditBtn">💾 Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL DE CONFIRMAÇÃO ===== -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2 id="confirmTitle">⚠️ Confirmar</h2>
+                <button class="modal-close" id="closeConfirmBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage">Tem certeza que deseja fazer isso?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="cancelConfirmBtn">Cancelar</button>
+                <button class="btn btn-danger" id="confirmActionBtn">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== JavaScript ===== -->
+    <script src="auth.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
