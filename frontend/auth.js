@@ -1,12 +1,15 @@
-// auth.js - Comunicação com o back-end (VERSÃO LOCAL)
+// auth.js - Comunicação com o back-end (VERSÃO DIGITALOCEAN)
 
 // ============================================================
-//  CONFIGURAÇÃO DA API PARA AMBIENTE LOCAL
+//  CONFIGURAÇÃO DA API PARA DIGITALOCEAN
+//  Detecta automaticamente se está em desenvolvimento ou produção
 // ============================================================
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3000/api'
+    : '/api';  // 🔥 MUITO IMPORTANTE: No App Platform, o front-end e back-end compartilham o mesmo domínio
 
-console.log('🔗 Conectando ao servidor em:', API_URL);
+console.log(`🔗 Conectando ao servidor em: ${API_URL}`);
 
 // ============================================================
 //  FUNÇÕES DE AUTENTICAÇÃO

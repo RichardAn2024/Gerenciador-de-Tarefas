@@ -3,8 +3,15 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const bcrypt = require('bcryptjs');
 
-// Criar ou abrir o banco de dados
-const db = new sqlite3.Database(path.join(__dirname, 'database.sqlite'));
+// ============================================================
+//  CONFIGURAÇÃO DO BANCO DE DADOS PARA PRODUÇÃO
+// ============================================================
+
+// Usar caminho absoluto para o banco de dados
+const dbPath = path.join(__dirname, 'database.sqlite');
+console.log(`📁 Banco de dados em: ${dbPath}`);
+
+const db = new sqlite3.Database(dbPath);
 
 // Criar tabelas se não existirem
 db.serialize(() => {

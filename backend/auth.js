@@ -2,9 +2,13 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const db = require('./database');
+require('dotenv').config();
 
-// Chave secreta para JWT
-const JWT_SECRET = 'minha-chave-secreta-super-segura-mude-isso';
+// ============================================================
+//  CHAVE SECRETA DO JWT (vinda de variável de ambiente)
+// ============================================================
+
+const JWT_SECRET = process.env.JWT_SECRET || 'minha-chave-secreta-super-segura-mude-para-producao';
 
 // ============================================================
 //  FUNÇÕES DE AUTENTICAÇÃO
