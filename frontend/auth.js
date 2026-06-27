@@ -1,13 +1,15 @@
 // auth.js - Comunicação com o back-end (VERSÃO DIGITALOCEAN)
 
 // ============================================================
-//  CONFIGURAÇÃO DA API PARA DIGITALOCEAN
+//  CONFIGURAÇÃO DA API
 //  Detecta automaticamente se está em desenvolvimento ou produção
 // ============================================================
 
+// No App Platform, o frontend e backend compartilham o mesmo domínio
+// Então usamos caminhos relativos (ex: /api/health)
 const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000/api'
-    : '/api';  // 🔥 MUITO IMPORTANTE: No App Platform, o front-end e back-end compartilham o mesmo domínio
+    : '/api';  // 🔥 No DigitalOcean, o frontend é servido pelo mesmo servidor
 
 console.log(`🔗 Conectando ao servidor em: ${API_URL}`);
 

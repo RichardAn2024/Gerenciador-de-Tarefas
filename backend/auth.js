@@ -8,7 +8,7 @@ require('dotenv').config();
 //  CHAVE SECRETA DO JWT (vinda de variável de ambiente)
 // ============================================================
 
-const JWT_SECRET = process.env.JWT_SECRET || 'minha-chave-secreta-super-segura-mude-para-producao';
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-nao-use-em-producao';
 
 // ============================================================
 //  FUNÇÕES DE AUTENTICAÇÃO

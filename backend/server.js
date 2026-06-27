@@ -1,4 +1,4 @@
-// server.js - Servidor principal (VERSÃO DIGITALOCEAN)
+// server.js - Servidor principal (VERSÃO DIGITALOCEAN COM process.env)
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -9,15 +9,22 @@ require('dotenv').config();
 const app = express();
 
 // ============================================================
-//  PORTA DINÂMICA PARA DIGITALOCEAN
-//  O App Platform define a variável PORT automaticamente
+//  LER VARIÁVEIS DE AMBIENTE
 // ============================================================
 
 const PORT = process.env.PORT || 3000;
 const FRONTEND_URL = process.env.FRONTEND_URL || '*';
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-nao-use-em-producao';
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+console.log('🔧 Configurações:');
+console.log(`   Porta: ${PORT}`);
+console.log(`   Ambiente: ${NODE_ENV}`);
+console.log(`   JWT Secret: ${JWT_SECRET ? '✅ Configurada' : '❌ Não configurada'}`);
+console.log(`   Frontend URL: ${FRONTEND_URL}`);
 
 // ============================================================
-//  MIDDLEWARE CORS - Configurado para produção
+//  MIDDLEWARE CORS
 // ============================================================
 
 app.use(cors({
@@ -33,7 +40,7 @@ app.use(express.json());
 //  LOGS (apenas em desenvolvimento)
 // ============================================================
 
-if (process.env.NODE_ENV !== 'production') {
+if (NODE_ENV !== 'production') {
     app.use((req, res, next) => {
         console.log(`📨 ${req.method} ${req.url}`);
         next();
@@ -41,14 +48,42 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // ============================================================
-//  ROTAS PÚBLICAS
+//  SERVIDOR DE ARQUIVOS ESTÁTICOS (Frontend)
+// ============================================================
+
+// Serve os arquivos do frontend (HTML, CSS, JS)
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+// Rota para a página inicial (index.html)
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend', 'index.html'));
+});
+
+// Rota para login
+app.get('/login.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend', 'login.html'));
+});
+
+// Rota para cadastro
+app.get('/cadastro.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend', 'cadastro.html'));
+});
+
+// Rota para admin
+app.get('/admin.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend', 'admin.html'));
+});
+
+// ============================================================
+//  ROTAS PÚBLICAS DA API
 // ============================================================
 
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
         mensagem: 'Servidor rodando!',
-        ambiente: process.env.NODE_ENV || 'development'
+        ambiente: NODE_ENV,
+        jwt_configurado: JWT_SECRET !== 'fallback-secret-nao-use-em-producao'
     });
 });
 
@@ -56,6 +91,8 @@ app.get('/api/health', (req, res) => {
 app.post('/api/cadastro', async (req, res) => {
     try {
         const { nome, email, senha } = req.body;
+
+        console.log('📝 Tentando cadastrar:', { nome, email });
 
         if (!nome || !email || !senha) {
             return res.status(400).json({ erro: 'Nome, email e senha são obrigatórios' });
@@ -68,12 +105,15 @@ app.post('/api/cadastro', async (req, res) => {
         const usuario = await auth.cadastrarUsuario(nome, email, senha);
         const token = auth.gerarToken(usuario.id, usuario.email, 0);
 
+        console.log('✅ Usuário cadastrado:', usuario.email);
+
         res.json({
             mensagem: 'Usuário cadastrado com sucesso!',
             token: token,
             usuario: usuario
         });
     } catch (error) {
+        console.error('❌ Erro no cadastro:', error.message);
         res.status(400).json({ erro: error.message });
     }
 });
@@ -83,13 +123,19 @@ app.post('/api/login', async (req, res) => {
     try {
         const { email, senha } = req.body;
 
+        console.log('🔑 Tentando login:', email);
+
         if (!email || !senha) {
             return res.status(400).json({ erro: 'Email e senha são obrigatórios' });
         }
 
         const resultado = await auth.loginUsuario(email, senha);
+
+        console.log('✅ Login realizado:', email);
+
         res.json(resultado);
     } catch (error) {
+        console.error('❌ Erro no login:', error.message);
         res.status(401).json({ erro: error.message });
     }
 });
@@ -101,14 +147,18 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/usuarios', auth.autenticar, (req, res) => {
     const usuarioId = req.usuarioId;
 
+    console.log('👥 Listando usuários para:', usuarioId);
+
     db.all(
         'SELECT id, nome, email FROM usuarios ORDER BY nome',
         [],
         (err, rows) => {
             if (err) {
+                console.error('❌ Erro ao buscar usuários:', err);
                 res.status(500).json({ erro: 'Erro ao buscar usuários' });
                 return;
             }
+            console.log(`✅ ${rows.length} usuários encontrados`);
             res.json(rows);
         }
     );
@@ -122,6 +172,8 @@ app.get('/api/usuarios', auth.autenticar, (req, res) => {
 app.get('/api/tarefas', auth.autenticar, (req, res) => {
     const usuarioId = req.usuarioId;
 
+    console.log(`📋 Buscando tarefas para usuário ${usuarioId}`);
+
     db.all(
         `SELECT t.*, 
                 u.nome as responsavel_nome, 
@@ -133,9 +185,12 @@ app.get('/api/tarefas', auth.autenticar, (req, res) => {
         [usuarioId],
         (err, tarefas) => {
             if (err) {
+                console.error('❌ Erro ao buscar tarefas:', err);
                 res.status(500).json({ erro: 'Erro ao buscar tarefas' });
                 return;
             }
+
+            console.log(`✅ ${tarefas.length} tarefas encontradas`);
 
             if (tarefas.length === 0) {
                 res.json([]);
@@ -166,6 +221,8 @@ app.post('/api/tarefas', auth.autenticar, (req, res) => {
     const usuarioId = req.usuarioId;
     const { titulo, tag, subtarefas, responsavel_id } = req.body;
 
+    console.log(`📝 Criando tarefa para usuário ${usuarioId}:`, titulo);
+
     if (!titulo) {
         return res.status(400).json({ erro: 'Título é obrigatório' });
     }
@@ -175,11 +232,13 @@ app.post('/api/tarefas', auth.autenticar, (req, res) => {
         [usuarioId, titulo, tag || '', 'todo', responsavel_id || null],
         function (err) {
             if (err) {
+                console.error('❌ Erro ao criar tarefa:', err);
                 res.status(500).json({ erro: 'Erro ao criar tarefa' });
                 return;
             }
 
             const tarefaId = this.lastID;
+            console.log(`✅ Tarefa criada com ID: ${tarefaId}`);
 
             if (subtarefas && subtarefas.length > 0) {
                 let inseridas = 0;
@@ -214,6 +273,8 @@ app.put('/api/tarefas/:id', auth.autenticar, (req, res) => {
     const tarefaId = req.params.id;
     const { titulo, tag, subtarefas, responsavel_id } = req.body;
 
+    console.log(`✏️ Atualizando tarefa ${tarefaId}`);
+
     db.get(
         'SELECT id FROM tarefas WHERE id = ? AND usuario_id = ?',
         [tarefaId, usuarioId],
@@ -227,11 +288,13 @@ app.put('/api/tarefas/:id', auth.autenticar, (req, res) => {
                 [titulo, tag || '', responsavel_id || null, tarefaId],
                 (err) => {
                     if (err) {
+                        console.error('❌ Erro ao atualizar tarefa:', err);
                         return res.status(500).json({ erro: 'Erro ao atualizar tarefa' });
                     }
 
                     db.run('DELETE FROM subtarefas WHERE tarefa_id = ?', [tarefaId], (err) => {
                         if (err) {
+                            console.error('❌ Erro ao atualizar subtarefas:', err);
                             return res.status(500).json({ erro: 'Erro ao atualizar subtarefas' });
                         }
 
@@ -265,6 +328,8 @@ app.patch('/api/tarefas/:id/status', auth.autenticar, (req, res) => {
     const tarefaId = req.params.id;
     const { status } = req.body;
 
+    console.log(`🔄 Atualizando status da tarefa ${tarefaId} para ${status}`);
+
     db.get(
         'SELECT id FROM tarefas WHERE id = ? AND usuario_id = ?',
         [tarefaId, usuarioId],
@@ -278,8 +343,10 @@ app.patch('/api/tarefas/:id/status', auth.autenticar, (req, res) => {
                 [status, tarefaId],
                 (err) => {
                     if (err) {
+                        console.error('❌ Erro ao atualizar status:', err);
                         return res.status(500).json({ erro: 'Erro ao atualizar status' });
                     }
+                    console.log(`✅ Status atualizado para ${status}`);
                     res.json({ mensagem: 'Status atualizado com sucesso!' });
                 }
             );
@@ -291,6 +358,8 @@ app.patch('/api/tarefas/:id/status', auth.autenticar, (req, res) => {
 app.patch('/api/subtarefas/:id', auth.autenticar, (req, res) => {
     const subtarefaId = req.params.id;
     const { concluida } = req.body;
+
+    console.log(`🔄 Alternando subtarefa ${subtarefaId} para ${concluida ? 'concluída' : 'pendente'}`);
 
     db.get(
         `SELECT s.id FROM subtarefas s
@@ -307,8 +376,10 @@ app.patch('/api/subtarefas/:id', auth.autenticar, (req, res) => {
                 [concluida ? 1 : 0, subtarefaId],
                 (err) => {
                     if (err) {
+                        console.error('❌ Erro ao atualizar subtarefa:', err);
                         return res.status(500).json({ erro: 'Erro ao atualizar subtarefa' });
                     }
+                    console.log('✅ Subtarefa atualizada');
                     res.json({ mensagem: 'Subtarefa atualizada!' });
                 }
             );
@@ -321,6 +392,8 @@ app.delete('/api/tarefas/:id', auth.autenticar, (req, res) => {
     const usuarioId = req.usuarioId;
     const tarefaId = req.params.id;
 
+    console.log(`🗑️ Deletando tarefa ${tarefaId}`);
+
     db.get(
         'SELECT id FROM tarefas WHERE id = ? AND usuario_id = ?',
         [tarefaId, usuarioId],
@@ -331,8 +404,10 @@ app.delete('/api/tarefas/:id', auth.autenticar, (req, res) => {
 
             db.run('DELETE FROM tarefas WHERE id = ?', [tarefaId], (err) => {
                 if (err) {
+                    console.error('❌ Erro ao deletar tarefa:', err);
                     return res.status(500).json({ erro: 'Erro ao deletar tarefa' });
                 }
+                console.log('✅ Tarefa deletada');
                 res.json({ mensagem: 'Tarefa deletada com sucesso!' });
             });
         }
@@ -373,14 +448,14 @@ app.get('/api/admin/estatisticas', auth.autenticar, auth.adminApenas, async (req
 
 // ============================================================
 //  INICIAR SERVIDOR - VERSÃO DIGITALOCEAN
-//  Escuta em todas as interfaces (0.0.0.0) e usa porta dinâmica
 // ============================================================
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Servidor rodando na porta ${PORT}`);
     console.log(`📋 API disponível em http://localhost:${PORT}/api/health`);
-    console.log(`🌐 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔒 JWT Secret: ${process.env.JWT_SECRET ? '✅ Configurada' : '⚠️ Usando padrão'}`);
+    console.log(`🌐 Ambiente: ${NODE_ENV}`);
+    console.log(`🔒 JWT Secret: ${JWT_SECRET !== 'fallback-secret-nao-use-em-producao' ? '✅ Configurada' : '⚠️ Usando padrão (NÃO RECOMENDADO)'}`);
+    console.log(`📂 Servindo frontend de: ${path.join(__dirname, '../frontend')}`);
 });
 
 console.log('✅ Servidor iniciado com sucesso!');
