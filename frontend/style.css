@@ -17,7 +17,6 @@ body {
     min-height: 100vh;
 }
 
-/* --- Layout Principal --- */
 .app-container {
     max-width: 1400px;
     margin: 0 auto;
@@ -118,52 +117,6 @@ body {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
-/* REMOVIDO: estilos do taskInput */
-
-/* --- Seletor de Tags --- */
-.tag-selector {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #f5f6f8;
-    padding: 4px 12px 4px 16px;
-    border-radius: 8px;
-    border: 1.5px solid #e1e4e8;
-}
-
-.tag-label {
-    font-size: 13px;
-    font-weight: 500;
-    color: #4a4a4a;
-}
-
-.tag-selector select {
-    padding: 6px 8px;
-    border: none;
-    background: transparent;
-    font-size: 14px;
-    font-weight: 500;
-    color: #1a1a1a;
-    cursor: pointer;
-    outline: none;
-}
-
-.tag-selector select option[value="urgent"] {
-    color: #b33636;
-    background: #ffd6d6;
-}
-
-.tag-selector select option[value="important"] {
-    color: #b37a36;
-    background: #fff3d6;
-}
-
-.tag-selector select option[value="tranquilo"] {
-    color: #0066cc;
-    background: #d6eeff;
-}
-
-/* --- Botões --- */
 .btn {
     padding: 10px 20px;
     border: none;
@@ -212,11 +165,6 @@ body {
 .btn-outline:hover {
     background: #f5f6f8;
     border-color: #b0b8c1;
-}
-
-.btn-full {
-    width: 100%;
-    justify-content: center;
 }
 
 /* --- Filtros --- */
@@ -326,7 +274,7 @@ body {
 .task-title {
     font-weight: 500;
     font-size: 15px;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     color: #1a1a1a;
 }
 
@@ -337,6 +285,27 @@ body {
     display: flex;
     align-items: center;
     gap: 4px;
+}
+
+/* --- Responsável --- */
+.task-responsavel {
+    font-size: 12px;
+    color: #4a4a4a;
+    margin-bottom: 4px;
+    display: inline-block;
+    background: #f0f4ff;
+    padding: 2px 10px;
+    border-radius: 12px;
+    margin-bottom: 6px;
+    transition: all 0.2s ease;
+}
+
+.task-responsavel strong {
+    color: #0066ff;
+}
+
+.task-responsavel:hover {
+    transform: scale(1.02);
 }
 
 /* --- Subtarefas --- */
@@ -378,6 +347,7 @@ body {
     align-items: center;
     font-size: 12px;
     color: #6b6f76;
+    margin-top: 6px;
 }
 
 .task-tags {
@@ -442,7 +412,7 @@ body {
     background: #e3edff;
 }
 
-/* --- Drop zone --- */
+/* --- Drag & Drop --- */
 .column.drag-over {
     background: #e3e9f5;
     border: 2px dashed #0066ff;
@@ -601,11 +571,6 @@ body {
     outline: none;
     border-color: #0066ff;
     box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.15);
-}
-
-.modal-body select option[value="tranquilo"] {
-    color: #0066cc;
-    background: #d6eeff;
 }
 
 /* --- Subtarefas no modal --- */
@@ -781,10 +746,6 @@ body {
         align-items: stretch;
     }
 
-    .tag-selector {
-        justify-content: center;
-    }
-
     .filter-group {
         justify-content: center;
     }
@@ -817,145 +778,4 @@ body {
     .subtask-input-row {
         flex-wrap: wrap;
     }
-}
-
-/* ============================================================
-   ESTILOS DO ADMIN
-   ============================================================ */
-
-.admin-badge {
-    background: #ff6b00;
-    color: white;
-    font-size: 12px;
-    font-weight: 700;
-    padding: 4px 12px;
-    border-radius: 20px;
-    margin-left: 8px;
-}
-
-.admin-panel {
-    background: white;
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-}
-
-.admin-panel h2 {
-    font-size: 20px;
-    color: #1a1a1a;
-    margin-bottom: 16px;
-}
-
-.table-container {
-    overflow-x: auto;
-}
-
-.admin-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-}
-
-.admin-table thead {
-    background: #f5f6f8;
-}
-
-.admin-table th {
-    text-align: left;
-    padding: 12px 16px;
-    font-weight: 600;
-    color: #4a4a4a;
-    border-bottom: 2px solid #e1e4e8;
-}
-
-.admin-table td {
-    padding: 12px 16px;
-    border-bottom: 1px solid #e1e4e8;
-    color: #1a1a1a;
-}
-
-.admin-table tr:hover {
-    background: #f8f9fb;
-}
-
-.badge {
-    padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.badge-tarefas {
-    background: #e3edff;
-    color: #0066ff;
-}
-
-.badge-admin {
-    background: #ff6b00;
-    color: white;
-}
-
-.loading-text {
-    text-align: center;
-    color: #8c929a;
-    padding: 30px !important;
-}
-
-.empty-text {
-    text-align: center;
-    color: #8c929a;
-    padding: 30px !important;
-}
-
-.error-text {
-    text-align: center;
-    color: #ff4d4f;
-    padding: 30px !important;
-}
-
-.admin-table .btn-sm {
-    padding: 4px 10px;
-    font-size: 12px;
-}
-
-/* ============================================================
-   RESPONSIVIDADE ADMIN
-   ============================================================ */
-
-@media (max-width: 700px) {
-    .admin-table {
-        font-size: 12px;
-    }
-
-    .admin-table th,
-    .admin-table td {
-        padding: 8px 10px;
-    }
-}
-
-/* ============================================================
-   ESTILOS DO RESPONSÁVEL
-   ============================================================ */
-
-.task-responsavel {
-    font-size: 12px;
-    color: #4a4a4a;
-    margin-bottom: 4px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: #f0f4ff;
-    padding: 2px 10px;
-    border-radius: 12px;
-    display: inline-block;
-    margin-bottom: 6px;
-}
-
-.task-responsavel strong {
-    color: #0066ff;
-}
-
-/* Ajuste no card para o responsável ficar abaixo do título */
-.task-card .task-title {
-    margin-bottom: 2px;
 }

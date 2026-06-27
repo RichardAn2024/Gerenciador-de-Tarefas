@@ -5,8 +5,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mini Monday - Gestão de Tarefas</title>
-
-    <!-- ===== CSS externo ===== -->
     <link rel="stylesheet" href="style.css" />
 </head>
 
@@ -60,7 +58,6 @@
 
         <!-- ===== Board (Quadro Kanban) ===== -->
         <div class="board" id="board">
-            <!-- Coluna 1: A Fazer -->
             <div class="column" data-status="todo">
                 <div class="column-header">
                     <div class="column-title">📋 A Fazer <span class="column-count" id="count-todo">0</span></div>
@@ -68,7 +65,6 @@
                 <div class="task-list" id="list-todo"></div>
             </div>
 
-            <!-- Coluna 2: Em Andamento -->
             <div class="column" data-status="doing">
                 <div class="column-header">
                     <div class="column-title">⚡ Em Andamento <span class="column-count" id="count-doing">0</span></div>
@@ -76,7 +72,6 @@
                 <div class="task-list" id="list-doing"></div>
             </div>
 
-            <!-- Coluna 3: Concluído -->
             <div class="column" data-status="done">
                 <div class="column-header">
                     <div class="column-title">✅ Concluído <span class="column-count" id="count-done">0</span></div>
@@ -87,7 +82,7 @@
 
     </div>
 
-    <!-- ===== MODAL DE CRIAÇÃO DE TAREFA ===== -->
+    <!-- ===== MODAL DE CRIAÇÃO ===== -->
     <div class="modal-overlay" id="createModal">
         <div class="modal-content modal-large">
             <div class="modal-header">
@@ -113,9 +108,7 @@
 
                 <div class="subtasks-section">
                     <label>📋 Subtarefas:</label>
-                    <div id="subtaskList">
-                        <!-- Os campos de subtarefa serão adicionados aqui -->
-                    </div>
+                    <div id="subtaskList"></div>
                     <button class="btn btn-outline btn-sm" id="addSubtaskBtn">➕ Adicionar subtarefa</button>
                 </div>
             </div>
@@ -152,9 +145,7 @@
 
                 <div class="subtasks-section">
                     <label>📋 Subtarefas:</label>
-                    <div id="editSubtaskList">
-                        <!-- As subtarefas serão carregadas aqui -->
-                    </div>
+                    <div id="editSubtaskList"></div>
                     <button class="btn btn-outline btn-sm" id="addEditSubtaskBtn">➕ Adicionar subtarefa</button>
                 </div>
             </div>
@@ -182,7 +173,6 @@
         </div>
     </div>
 
-    <!-- ===== JavaScript ===== -->
     <script src="auth.js"></script>
     <script src="script.js"></script>
 </body>

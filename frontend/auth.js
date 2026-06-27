@@ -1,17 +1,12 @@
-// auth.js - Comunicação com o back-end
+// auth.js - Comunicação com o back-end (VERSÃO LOCAL)
 
 // ============================================================
-//  CONFIGURAÇÃO DA API PARA PRODUÇÃO
+//  CONFIGURAÇÃO DA API PARA AMBIENTE LOCAL
 // ============================================================
 
-// Em produção, use o domínio do seu servidor
-// Em desenvolvimento, use localhost
+const API_URL = 'http://localhost:3000/api';
 
-const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:3000/api'
-    : 'https://seudominio.com/api';  // ← MUDE PARA SEU DOMÍNIO
-
-console.log(`🔗 API URL: ${API_URL}`);
+console.log('🔗 Conectando ao servidor em:', API_URL);
 
 // ============================================================
 //  FUNÇÕES DE AUTENTICAÇÃO
@@ -77,8 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     mostrarErro(data.erro || 'Erro ao cadastrar.');
                 }
             } catch (error) {
-                mostrarErro('Erro de conexão com o servidor.');
-                console.error(error);
+                console.error('❌ Erro no cadastro:', error);
+                mostrarErro('Erro de conexão com o servidor. Verifique se o servidor está rodando.');
             }
         });
     }
@@ -115,8 +110,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     mostrarErro(data.erro || 'Email ou senha incorretos.');
                 }
             } catch (error) {
-                mostrarErro('Erro de conexão com o servidor.');
-                console.error(error);
+                console.error('❌ Erro no login:', error);
+                mostrarErro('Erro de conexão com o servidor. Verifique se o servidor está rodando.');
             }
         });
     }
