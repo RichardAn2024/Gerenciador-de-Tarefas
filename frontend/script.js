@@ -1,5 +1,5 @@
 /* ============================================================
-   script.js - Lógica completa do Dashboard (COM RESPONSÁVEIS)
+   script.js - Lógica completa do Dashboard (COM RESPONSÁVEIS E CRIADOR)
    ============================================================ */
 
 // --- Estado ---
@@ -203,6 +203,28 @@ function createTaskCard(task) {
     const title = document.createElement('div');
     title.className = 'task-title';
     title.textContent = task.titulo;
+    card.appendChild(title);
+
+    // Criador da tarefa
+    if (task.criador_nome) {
+        const criadorEl = document.createElement('div');
+        criadorEl.className = 'task-criador';
+        const isEu = usuarioLogado && task.criador_id === usuarioLogado.id;
+        const icone = isEu ? '👤' : '👤';
+        const texto = isEu ? `Eu (${task.criador_nome})` : task.criador_nome;
+        criadorEl.innerHTML = `${icone} <strong>Criador:</strong> ${texto}`;
+        if (isEu) {
+            criadorEl.style.background = '#e3edff';
+            criadorEl.style.border = '1px solid #0066ff';
+            criadorEl.style.padding = '2px 10px';
+            criadorEl.style.borderRadius = '12px';
+            criadorEl.style.display = 'inline-block';
+            criadorEl.style.marginBottom = '4px';
+        } else {
+            criadorEl.style.cssText = 'font-size: 12px; color: #6b6f76; margin-bottom: 4px;';
+        }
+        card.appendChild(criadorEl);
+    }
 
     // Responsável (se tiver)
     if (task.responsavel_nome) {
@@ -226,6 +248,7 @@ function createTaskCard(task) {
     const dateEl = document.createElement('div');
     dateEl.className = 'task-date';
     dateEl.innerHTML = `📅 ${formatarData(task.data_criacao)}`;
+    card.appendChild(dateEl);
 
     // Subtarefas
     const subtasksEl = document.createElement('div');
@@ -257,6 +280,9 @@ function createTaskCard(task) {
             item.appendChild(text);
             subtasksEl.appendChild(item);
         });
+    }
+    if (task.subtarefas && task.subtarefas.length > 0) {
+        card.appendChild(subtasksEl);
     }
 
     // Meta (tags + ações)
@@ -323,10 +349,6 @@ function createTaskCard(task) {
     meta.appendChild(tagsContainer);
     meta.appendChild(actions);
 
-    card.appendChild(dateEl);
-    if (task.subtarefas && task.subtarefas.length > 0) {
-        card.appendChild(subtasksEl);
-    }
     card.appendChild(meta);
 
     // Drag & Drop

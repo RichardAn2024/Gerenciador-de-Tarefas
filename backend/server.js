@@ -165,24 +165,24 @@ app.get('/api/usuarios', auth.autenticar, (req, res) => {
 });
 
 // ============================================================
-//  ROTAS PROTEGIDAS (TAREFAS)
+//  ROTAS PROTEGIDAS (TAREFAS) - COMPARTILHADAS
 // ============================================================
 
-// Buscar todas as tarefas do usuário
+// Buscar TODAS as tarefas (todos os usuários veem todas as tarefas)
 app.get('/api/tarefas', auth.autenticar, (req, res) => {
-    const usuarioId = req.usuarioId;
-
-    console.log(`📋 Buscando tarefas para usuário ${usuarioId}`);
+    console.log(`📋 Buscando todas as tarefas (compartilhadas)`);
 
     db.all(
         `SELECT t.*, 
                 u.nome as responsavel_nome, 
-                u.email as responsavel_email 
+                u.email as responsavel_email,
+                criador.nome as criador_nome,
+                criador.id as criador_id
          FROM tarefas t
          LEFT JOIN usuarios u ON t.responsavel_id = u.id
-         WHERE t.usuario_id = ? 
+         LEFT JOIN usuarios criador ON t.usuario_id = criador.id
          ORDER BY t.data_criacao DESC`,
-        [usuarioId],
+        [],
         (err, tarefas) => {
             if (err) {
                 console.error('❌ Erro ao buscar tarefas:', err);
@@ -216,7 +216,7 @@ app.get('/api/tarefas', auth.autenticar, (req, res) => {
     );
 });
 
-// Criar nova tarefa
+// Criar nova tarefa (visível para todos)
 app.post('/api/tarefas', auth.autenticar, (req, res) => {
     const usuarioId = req.usuarioId;
     const { titulo, tag, subtarefas, responsavel_id } = req.body;
@@ -267,151 +267,106 @@ app.post('/api/tarefas', auth.autenticar, (req, res) => {
     );
 });
 
-// Atualizar tarefa
+// Atualizar tarefa (qualquer usuário pode editar qualquer tarefa)
 app.put('/api/tarefas/:id', auth.autenticar, (req, res) => {
-    const usuarioId = req.usuarioId;
     const tarefaId = req.params.id;
     const { titulo, tag, subtarefas, responsavel_id } = req.body;
 
     console.log(`✏️ Atualizando tarefa ${tarefaId}`);
 
-    db.get(
-        'SELECT id FROM tarefas WHERE id = ? AND usuario_id = ?',
-        [tarefaId, usuarioId],
-        (err, tarefa) => {
-            if (err || !tarefa) {
-                return res.status(404).json({ erro: 'Tarefa não encontrada' });
+    db.run(
+        'UPDATE tarefas SET titulo = ?, tag = ?, responsavel_id = ? WHERE id = ?',
+        [titulo, tag || '', responsavel_id || null, tarefaId],
+        (err) => {
+            if (err) {
+                console.error('❌ Erro ao atualizar tarefa:', err);
+                return res.status(500).json({ erro: 'Erro ao atualizar tarefa' });
             }
 
-            db.run(
-                'UPDATE tarefas SET titulo = ?, tag = ?, responsavel_id = ? WHERE id = ?',
-                [titulo, tag || '', responsavel_id || null, tarefaId],
-                (err) => {
-                    if (err) {
-                        console.error('❌ Erro ao atualizar tarefa:', err);
-                        return res.status(500).json({ erro: 'Erro ao atualizar tarefa' });
-                    }
-
-                    db.run('DELETE FROM subtarefas WHERE tarefa_id = ?', [tarefaId], (err) => {
-                        if (err) {
-                            console.error('❌ Erro ao atualizar subtarefas:', err);
-                            return res.status(500).json({ erro: 'Erro ao atualizar subtarefas' });
-                        }
-
-                        if (subtarefas && subtarefas.length > 0) {
-                            let inseridas = 0;
-                            subtarefas.forEach(sub => {
-                                db.run(
-                                    'INSERT INTO subtarefas (tarefa_id, texto, concluida) VALUES (?, ?, ?)',
-                                    [tarefaId, sub.texto, sub.concluida || 0],
-                                    (err) => {
-                                        inseridas++;
-                                        if (inseridas === subtarefas.length) {
-                                            res.json({ mensagem: 'Tarefa atualizada com sucesso!' });
-                                        }
-                                    }
-                                );
-                            });
-                        } else {
-                            res.json({ mensagem: 'Tarefa atualizada com sucesso!' });
-                        }
-                    });
+            db.run('DELETE FROM subtarefas WHERE tarefa_id = ?', [tarefaId], (err) => {
+                if (err) {
+                    console.error('❌ Erro ao atualizar subtarefas:', err);
+                    return res.status(500).json({ erro: 'Erro ao atualizar subtarefas' });
                 }
-            );
+
+                if (subtarefas && subtarefas.length > 0) {
+                    let inseridas = 0;
+                    subtarefas.forEach(sub => {
+                        db.run(
+                            'INSERT INTO subtarefas (tarefa_id, texto, concluida) VALUES (?, ?, ?)',
+                            [tarefaId, sub.texto, sub.concluida || 0],
+                            (err) => {
+                                inseridas++;
+                                if (inseridas === subtarefas.length) {
+                                    res.json({ mensagem: 'Tarefa atualizada com sucesso!' });
+                                }
+                            }
+                        );
+                    });
+                } else {
+                    res.json({ mensagem: 'Tarefa atualizada com sucesso!' });
+                }
+            });
         }
     );
 });
 
-// Atualizar status da tarefa
+// Atualizar status da tarefa (qualquer usuário pode alterar status)
 app.patch('/api/tarefas/:id/status', auth.autenticar, (req, res) => {
-    const usuarioId = req.usuarioId;
     const tarefaId = req.params.id;
     const { status } = req.body;
 
     console.log(`🔄 Atualizando status da tarefa ${tarefaId} para ${status}`);
 
-    db.get(
-        'SELECT id FROM tarefas WHERE id = ? AND usuario_id = ?',
-        [tarefaId, usuarioId],
-        (err, tarefa) => {
-            if (err || !tarefa) {
-                return res.status(404).json({ erro: 'Tarefa não encontrada' });
+    db.run(
+        'UPDATE tarefas SET status = ? WHERE id = ?',
+        [status, tarefaId],
+        (err) => {
+            if (err) {
+                console.error('❌ Erro ao atualizar status:', err);
+                return res.status(500).json({ erro: 'Erro ao atualizar status' });
             }
-
-            db.run(
-                'UPDATE tarefas SET status = ? WHERE id = ?',
-                [status, tarefaId],
-                (err) => {
-                    if (err) {
-                        console.error('❌ Erro ao atualizar status:', err);
-                        return res.status(500).json({ erro: 'Erro ao atualizar status' });
-                    }
-                    console.log(`✅ Status atualizado para ${status}`);
-                    res.json({ mensagem: 'Status atualizado com sucesso!' });
-                }
-            );
+            console.log(`✅ Status atualizado para ${status}`);
+            res.json({ mensagem: 'Status atualizado com sucesso!' });
         }
     );
 });
 
-// Alternar subtarefa
+// Alternar subtarefa (qualquer usuário pode alternar)
 app.patch('/api/subtarefas/:id', auth.autenticar, (req, res) => {
     const subtarefaId = req.params.id;
     const { concluida } = req.body;
 
     console.log(`🔄 Alternando subtarefa ${subtarefaId} para ${concluida ? 'concluída' : 'pendente'}`);
 
-    db.get(
-        `SELECT s.id FROM subtarefas s
-         JOIN tarefas t ON s.tarefa_id = t.id
-         WHERE s.id = ? AND t.usuario_id = ?`,
-        [subtarefaId, req.usuarioId],
-        (err, subtarefa) => {
-            if (err || !subtarefa) {
-                return res.status(404).json({ erro: 'Subtarefa não encontrada' });
+    db.run(
+        'UPDATE subtarefas SET concluida = ? WHERE id = ?',
+        [concluida ? 1 : 0, subtarefaId],
+        (err) => {
+            if (err) {
+                console.error('❌ Erro ao atualizar subtarefa:', err);
+                return res.status(500).json({ erro: 'Erro ao atualizar subtarefa' });
             }
-
-            db.run(
-                'UPDATE subtarefas SET concluida = ? WHERE id = ?',
-                [concluida ? 1 : 0, subtarefaId],
-                (err) => {
-                    if (err) {
-                        console.error('❌ Erro ao atualizar subtarefa:', err);
-                        return res.status(500).json({ erro: 'Erro ao atualizar subtarefa' });
-                    }
-                    console.log('✅ Subtarefa atualizada');
-                    res.json({ mensagem: 'Subtarefa atualizada!' });
-                }
-            );
+            console.log('✅ Subtarefa atualizada');
+            res.json({ mensagem: 'Subtarefa atualizada!' });
         }
     );
 });
 
-// Deletar tarefa
+// Deletar tarefa (qualquer usuário pode deletar qualquer tarefa)
 app.delete('/api/tarefas/:id', auth.autenticar, (req, res) => {
-    const usuarioId = req.usuarioId;
     const tarefaId = req.params.id;
 
     console.log(`🗑️ Deletando tarefa ${tarefaId}`);
 
-    db.get(
-        'SELECT id FROM tarefas WHERE id = ? AND usuario_id = ?',
-        [tarefaId, usuarioId],
-        (err, tarefa) => {
-            if (err || !tarefa) {
-                return res.status(404).json({ erro: 'Tarefa não encontrada' });
-            }
-
-            db.run('DELETE FROM tarefas WHERE id = ?', [tarefaId], (err) => {
-                if (err) {
-                    console.error('❌ Erro ao deletar tarefa:', err);
-                    return res.status(500).json({ erro: 'Erro ao deletar tarefa' });
-                }
-                console.log('✅ Tarefa deletada');
-                res.json({ mensagem: 'Tarefa deletada com sucesso!' });
-            });
+    db.run('DELETE FROM tarefas WHERE id = ?', [tarefaId], (err) => {
+        if (err) {
+            console.error('❌ Erro ao deletar tarefa:', err);
+            return res.status(500).json({ erro: 'Erro ao deletar tarefa' });
         }
-    );
+        console.log('✅ Tarefa deletada');
+        res.json({ mensagem: 'Tarefa deletada com sucesso!' });
+    });
 });
 
 // ============================================================
