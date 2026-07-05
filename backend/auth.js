@@ -1,4 +1,4 @@
-// auth.js - Funções de autenticação
+// auth.js - Funções de autenticação (VERSÃO MYSQL)
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const db = require('./database');
@@ -61,139 +61,113 @@ function adminApenas(req, res, next) {
 //  FUNÇÕES DE USUÁRIO
 // ============================================================
 
-function cadastrarUsuario(nome, email, senha) {
-    return new Promise((resolve, reject) => {
-        db.get('SELECT id FROM usuarios WHERE email = ?', [email], (err, row) => {
-            if (err) {
-                reject(err);
-                return;
-            }
-            if (row) {
-                reject(new Error('Email já cadastrado'));
-                return;
-            }
+async function cadastrarUsuario(nome, email, senha) {
+    try {
+        // Verificar se email já existe
+        const [rows] = await db.query('SELECT id FROM usuarios WHERE email = ?', [email]);
 
-            const salt = bcrypt.genSaltSync(10);
-            const senhaHash = bcrypt.hashSync(senha, salt);
+        if (rows.length > 0) {
+            throw new Error('Email já cadastrado');
+        }
 
-            db.run(
-                'INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)',
-                [nome, email, senhaHash],
-                function (err) {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-                    resolve({
-                        id: this.lastID,
-                        nome: nome,
-                        email: email,
-                        isAdmin: 0
-                    });
-                }
-            );
-        });
-    });
+        const salt = bcrypt.genSaltSync(10);
+        const senhaHash = bcrypt.hashSync(senha, salt);
+
+        const [result] = await db.query(
+            'INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)',
+            [nome, email, senhaHash]
+        );
+
+        return {
+            id: result.insertId,
+            nome: nome,
+            email: email,
+            isAdmin: 0
+        };
+    } catch (error) {
+        throw error;
+    }
 }
 
-function loginUsuario(email, senha) {
-    return new Promise((resolve, reject) => {
-        db.get('SELECT * FROM usuarios WHERE email = ?', [email], (err, usuario) => {
-            if (err) {
-                reject(err);
-                return;
-            }
-            if (!usuario) {
-                reject(new Error('Email ou senha incorretos'));
-                return;
-            }
+async function loginUsuario(email, senha) {
+    try {
+        const [rows] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
 
-            const senhaValida = bcrypt.compareSync(senha, usuario.senha);
-            if (!senhaValida) {
-                reject(new Error('Email ou senha incorretos'));
-                return;
-            }
+        if (rows.length === 0) {
+            throw new Error('Email ou senha incorretos');
+        }
 
-            const token = gerarToken(usuario.id, usuario.email, usuario.is_admin);
-            resolve({
-                token: token,
-                usuario: {
-                    id: usuario.id,
-                    nome: usuario.nome,
-                    email: usuario.email,
-                    isAdmin: usuario.is_admin || 0
-                }
-            });
-        });
-    });
+        const usuario = rows[0];
+        const senhaValida = bcrypt.compareSync(senha, usuario.senha);
+
+        if (!senhaValida) {
+            throw new Error('Email ou senha incorretos');
+        }
+
+        const token = gerarToken(usuario.id, usuario.email, usuario.is_admin);
+
+        return {
+            token: token,
+            usuario: {
+                id: usuario.id,
+                nome: usuario.nome,
+                email: usuario.email,
+                isAdmin: usuario.is_admin || 0
+            }
+        };
+    } catch (error) {
+        throw error;
+    }
 }
 
 // ============================================================
 //  FUNÇÕES DE ADMIN
 // ============================================================
 
-function listarUsuarios() {
-    return new Promise((resolve, reject) => {
-        db.all(
-            `SELECT id, nome, email, is_admin, criado_em,
-                    (SELECT COUNT(*) FROM tarefas WHERE usuario_id = usuarios.id) as total_tarefas
-             FROM usuarios
-             ORDER BY criado_em DESC`,
-            [],
-            (err, rows) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                resolve(rows);
-            }
-        );
-    });
+async function listarUsuarios() {
+    try {
+        const [rows] = await db.query(`
+            SELECT id, nome, email, is_admin, criado_em,
+                   (SELECT COUNT(*) FROM tarefas WHERE usuario_id = usuarios.id) as total_tarefas
+            FROM usuarios
+            ORDER BY criado_em DESC
+        `);
+        return rows;
+    } catch (error) {
+        throw error;
+    }
 }
 
-function deletarUsuario(id) {
-    return new Promise((resolve, reject) => {
-        db.get('SELECT is_admin FROM usuarios WHERE id = ?', [id], (err, row) => {
-            if (err) {
-                reject(err);
-                return;
-            }
-            if (row && row.is_admin === 1) {
-                reject(new Error('Não é possível deletar o administrador principal'));
-                return;
-            }
+async function deletarUsuario(id) {
+    try {
+        // Verificar se é admin
+        const [rows] = await db.query('SELECT is_admin FROM usuarios WHERE id = ?', [id]);
 
-            db.run('DELETE FROM usuarios WHERE id = ?', [id], function (err) {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                resolve({ deletado: true, id: id });
-            });
-        });
-    });
+        if (rows.length > 0 && rows[0].is_admin === 1) {
+            throw new Error('Não é possível deletar o administrador principal');
+        }
+
+        await db.query('DELETE FROM usuarios WHERE id = ?', [id]);
+        return { deletado: true, id: id };
+    } catch (error) {
+        throw error;
+    }
 }
 
-function obterEstatisticas() {
-    return new Promise((resolve, reject) => {
-        db.get(
-            `SELECT 
+async function obterEstatisticas() {
+    try {
+        const [rows] = await db.query(`
+            SELECT 
                 (SELECT COUNT(*) FROM usuarios) as total_usuarios,
                 (SELECT COUNT(*) FROM tarefas) as total_tarefas,
                 (SELECT COUNT(*) FROM subtarefas) as total_subtarefas,
                 (SELECT COUNT(*) FROM tarefas WHERE status = 'done') as tarefas_concluidas,
                 (SELECT COUNT(*) FROM subtarefas WHERE concluida = 1) as subtarefas_concluidas
-            `,
-            [],
-            (err, row) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                resolve(row);
-            }
-        );
-    });
+        `);
+        return rows[0];
+    } catch (error) {
+        throw error;
+    }
 }
 
 module.exports = {

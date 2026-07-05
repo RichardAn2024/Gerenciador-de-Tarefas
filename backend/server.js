@@ -1,4 +1,4 @@
-// server.js - Servidor principal (VERSÃO DIGITALOCEAN COM process.env)
+// server.js - Servidor principal (VERSÃO MYSQL)
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -141,232 +141,192 @@ app.post('/api/login', async (req, res) => {
 });
 
 // ============================================================
-//  ROTA PARA LISTAR USUÁRIOS (responsáveis)
+//  ROTA PARA LISTAR USUÁRIOS (responsáveis) - VERSÃO MYSQL
 // ============================================================
 
-app.get('/api/usuarios', auth.autenticar, (req, res) => {
-    const usuarioId = req.usuarioId;
+app.get('/api/usuarios', auth.autenticar, async (req, res) => {
+    try {
+        console.log('👥 Listando usuários');
 
-    console.log('👥 Listando usuários para:', usuarioId);
+        const [rows] = await db.query('SELECT id, nome, email FROM usuarios ORDER BY nome');
 
-    db.all(
-        'SELECT id, nome, email FROM usuarios ORDER BY nome',
-        [],
-        (err, rows) => {
-            if (err) {
-                console.error('❌ Erro ao buscar usuários:', err);
-                res.status(500).json({ erro: 'Erro ao buscar usuários' });
-                return;
-            }
-            console.log(`✅ ${rows.length} usuários encontrados`);
-            res.json(rows);
-        }
-    );
+        console.log(`✅ ${rows.length} usuários encontrados`);
+        res.json(rows);
+    } catch (error) {
+        console.error('❌ Erro ao buscar usuários:', error);
+        res.status(500).json({ erro: 'Erro ao buscar usuários' });
+    }
 });
 
 // ============================================================
-//  ROTAS PROTEGIDAS (TAREFAS) - COMPARTILHADAS
+//  ROTAS PROTEGIDAS (TAREFAS) - VERSÃO MYSQL
 // ============================================================
 
 // Buscar TODAS as tarefas (todos os usuários veem todas as tarefas)
-app.get('/api/tarefas', auth.autenticar, (req, res) => {
-    console.log(`📋 Buscando todas as tarefas (compartilhadas)`);
+app.get('/api/tarefas', auth.autenticar, async (req, res) => {
+    try {
+        console.log(`📋 Buscando todas as tarefas (compartilhadas)`);
 
-    db.all(
-        `SELECT t.*, 
-                u.nome as responsavel_nome, 
-                u.email as responsavel_email,
-                criador.nome as criador_nome,
-                criador.id as criador_id
-         FROM tarefas t
-         LEFT JOIN usuarios u ON t.responsavel_id = u.id
-         LEFT JOIN usuarios criador ON t.usuario_id = criador.id
-         ORDER BY t.data_criacao DESC`,
-        [],
-        (err, tarefas) => {
-            if (err) {
-                console.error('❌ Erro ao buscar tarefas:', err);
-                res.status(500).json({ erro: 'Erro ao buscar tarefas' });
-                return;
-            }
+        const [tarefas] = await db.query(`
+            SELECT t.*, 
+                   u.nome as responsavel_nome, 
+                   u.email as responsavel_email,
+                   criador.nome as criador_nome,
+                   criador.id as criador_id
+            FROM tarefas t
+            LEFT JOIN usuarios u ON t.responsavel_id = u.id
+            LEFT JOIN usuarios criador ON t.usuario_id = criador.id
+            ORDER BY t.data_criacao DESC
+        `);
 
-            console.log(`✅ ${tarefas.length} tarefas encontradas`);
+        console.log(`✅ ${tarefas.length} tarefas encontradas`);
 
-            if (tarefas.length === 0) {
-                res.json([]);
-                return;
-            }
-
-            let completas = 0;
-            tarefas.forEach((tarefa, index) => {
-                db.all(
-                    'SELECT * FROM subtarefas WHERE tarefa_id = ?',
-                    [tarefa.id],
-                    (err, subtarefas) => {
-                        tarefa.subtarefas = subtarefas || [];
-                        completas++;
-
-                        if (completas === tarefas.length) {
-                            res.json(tarefas);
-                        }
-                    }
-                );
-            });
+        // Buscar subtarefas para cada tarefa
+        for (let tarefa of tarefas) {
+            const [subtarefas] = await db.query(
+                'SELECT * FROM subtarefas WHERE tarefa_id = ?',
+                [tarefa.id]
+            );
+            tarefa.subtarefas = subtarefas || [];
         }
-    );
+
+        res.json(tarefas);
+    } catch (error) {
+        console.error('❌ Erro ao buscar tarefas:', error);
+        res.status(500).json({ erro: 'Erro ao buscar tarefas' });
+    }
 });
 
 // Criar nova tarefa (visível para todos)
-app.post('/api/tarefas', auth.autenticar, (req, res) => {
-    const usuarioId = req.usuarioId;
-    const { titulo, tag, subtarefas, responsavel_id } = req.body;
+app.post('/api/tarefas', auth.autenticar, async (req, res) => {
+    try {
+        const usuarioId = req.usuarioId;
+        const { titulo, tag, subtarefas, responsavel_id } = req.body;
 
-    console.log(`📝 Criando tarefa para usuário ${usuarioId}:`, titulo);
+        console.log(`📝 Criando tarefa para usuário ${usuarioId}:`, titulo);
 
-    if (!titulo) {
-        return res.status(400).json({ erro: 'Título é obrigatório' });
-    }
+        if (!titulo) {
+            return res.status(400).json({ erro: 'Título é obrigatório' });
+        }
 
-    db.run(
-        'INSERT INTO tarefas (usuario_id, titulo, tag, status, responsavel_id) VALUES (?, ?, ?, ?, ?)',
-        [usuarioId, titulo, tag || '', 'todo', responsavel_id || null],
-        function (err) {
-            if (err) {
-                console.error('❌ Erro ao criar tarefa:', err);
-                res.status(500).json({ erro: 'Erro ao criar tarefa' });
-                return;
-            }
+        const [result] = await db.query(
+            'INSERT INTO tarefas (usuario_id, titulo, tag, status, responsavel_id) VALUES (?, ?, ?, ?, ?)',
+            [usuarioId, titulo, tag || '', 'todo', responsavel_id || null]
+        );
 
-            const tarefaId = this.lastID;
-            console.log(`✅ Tarefa criada com ID: ${tarefaId}`);
+        const tarefaId = result.insertId;
+        console.log(`✅ Tarefa criada com ID: ${tarefaId}`);
 
-            if (subtarefas && subtarefas.length > 0) {
-                let inseridas = 0;
-                subtarefas.forEach(sub => {
-                    db.run(
-                        'INSERT INTO subtarefas (tarefa_id, texto, concluida) VALUES (?, ?, ?)',
-                        [tarefaId, sub.texto, sub.concluida || 0],
-                        (err) => {
-                            inseridas++;
-                            if (inseridas === subtarefas.length) {
-                                res.json({
-                                    id: tarefaId,
-                                    mensagem: 'Tarefa criada com sucesso!'
-                                });
-                            }
-                        }
-                    );
-                });
-            } else {
-                res.json({
-                    id: tarefaId,
-                    mensagem: 'Tarefa criada com sucesso!'
-                });
+        // Inserir subtarefas
+        if (subtarefas && subtarefas.length > 0) {
+            for (let sub of subtarefas) {
+                await db.query(
+                    'INSERT INTO subtarefas (tarefa_id, texto, concluida) VALUES (?, ?, ?)',
+                    [tarefaId, sub.texto, sub.concluida || 0]
+                );
             }
         }
-    );
+
+        res.json({
+            id: tarefaId,
+            mensagem: 'Tarefa criada com sucesso!'
+        });
+    } catch (error) {
+        console.error('❌ Erro ao criar tarefa:', error);
+        res.status(500).json({ erro: 'Erro ao criar tarefa' });
+    }
 });
 
 // Atualizar tarefa (qualquer usuário pode editar qualquer tarefa)
-app.put('/api/tarefas/:id', auth.autenticar, (req, res) => {
-    const tarefaId = req.params.id;
-    const { titulo, tag, subtarefas, responsavel_id } = req.body;
+app.put('/api/tarefas/:id', auth.autenticar, async (req, res) => {
+    try {
+        const tarefaId = req.params.id;
+        const { titulo, tag, subtarefas, responsavel_id } = req.body;
 
-    console.log(`✏️ Atualizando tarefa ${tarefaId}`);
+        console.log(`✏️ Atualizando tarefa ${tarefaId}`);
 
-    db.run(
-        'UPDATE tarefas SET titulo = ?, tag = ?, responsavel_id = ? WHERE id = ?',
-        [titulo, tag || '', responsavel_id || null, tarefaId],
-        (err) => {
-            if (err) {
-                console.error('❌ Erro ao atualizar tarefa:', err);
-                return res.status(500).json({ erro: 'Erro ao atualizar tarefa' });
+        await db.query(
+            'UPDATE tarefas SET titulo = ?, tag = ?, responsavel_id = ? WHERE id = ?',
+            [titulo, tag || '', responsavel_id || null, tarefaId]
+        );
+
+        // Deletar subtarefas antigas
+        await db.query('DELETE FROM subtarefas WHERE tarefa_id = ?', [tarefaId]);
+
+        // Inserir novas subtarefas
+        if (subtarefas && subtarefas.length > 0) {
+            for (let sub of subtarefas) {
+                await db.query(
+                    'INSERT INTO subtarefas (tarefa_id, texto, concluida) VALUES (?, ?, ?)',
+                    [tarefaId, sub.texto, sub.concluida || 0]
+                );
             }
-
-            db.run('DELETE FROM subtarefas WHERE tarefa_id = ?', [tarefaId], (err) => {
-                if (err) {
-                    console.error('❌ Erro ao atualizar subtarefas:', err);
-                    return res.status(500).json({ erro: 'Erro ao atualizar subtarefas' });
-                }
-
-                if (subtarefas && subtarefas.length > 0) {
-                    let inseridas = 0;
-                    subtarefas.forEach(sub => {
-                        db.run(
-                            'INSERT INTO subtarefas (tarefa_id, texto, concluida) VALUES (?, ?, ?)',
-                            [tarefaId, sub.texto, sub.concluida || 0],
-                            (err) => {
-                                inseridas++;
-                                if (inseridas === subtarefas.length) {
-                                    res.json({ mensagem: 'Tarefa atualizada com sucesso!' });
-                                }
-                            }
-                        );
-                    });
-                } else {
-                    res.json({ mensagem: 'Tarefa atualizada com sucesso!' });
-                }
-            });
         }
-    );
+
+        res.json({ mensagem: 'Tarefa atualizada com sucesso!' });
+    } catch (error) {
+        console.error('❌ Erro ao atualizar tarefa:', error);
+        res.status(500).json({ erro: 'Erro ao atualizar tarefa' });
+    }
 });
 
 // Atualizar status da tarefa (qualquer usuário pode alterar status)
-app.patch('/api/tarefas/:id/status', auth.autenticar, (req, res) => {
-    const tarefaId = req.params.id;
-    const { status } = req.body;
+app.patch('/api/tarefas/:id/status', auth.autenticar, async (req, res) => {
+    try {
+        const tarefaId = req.params.id;
+        const { status } = req.body;
 
-    console.log(`🔄 Atualizando status da tarefa ${tarefaId} para ${status}`);
+        console.log(`🔄 Atualizando status da tarefa ${tarefaId} para ${status}`);
 
-    db.run(
-        'UPDATE tarefas SET status = ? WHERE id = ?',
-        [status, tarefaId],
-        (err) => {
-            if (err) {
-                console.error('❌ Erro ao atualizar status:', err);
-                return res.status(500).json({ erro: 'Erro ao atualizar status' });
-            }
-            console.log(`✅ Status atualizado para ${status}`);
-            res.json({ mensagem: 'Status atualizado com sucesso!' });
-        }
-    );
+        await db.query(
+            'UPDATE tarefas SET status = ? WHERE id = ?',
+            [status, tarefaId]
+        );
+
+        console.log(`✅ Status atualizado para ${status}`);
+        res.json({ mensagem: 'Status atualizado com sucesso!' });
+    } catch (error) {
+        console.error('❌ Erro ao atualizar status:', error);
+        res.status(500).json({ erro: 'Erro ao atualizar status' });
+    }
 });
 
 // Alternar subtarefa (qualquer usuário pode alternar)
-app.patch('/api/subtarefas/:id', auth.autenticar, (req, res) => {
-    const subtarefaId = req.params.id;
-    const { concluida } = req.body;
+app.patch('/api/subtarefas/:id', auth.autenticar, async (req, res) => {
+    try {
+        const subtarefaId = req.params.id;
+        const { concluida } = req.body;
 
-    console.log(`🔄 Alternando subtarefa ${subtarefaId} para ${concluida ? 'concluída' : 'pendente'}`);
+        console.log(`🔄 Alternando subtarefa ${subtarefaId} para ${concluida ? 'concluída' : 'pendente'}`);
 
-    db.run(
-        'UPDATE subtarefas SET concluida = ? WHERE id = ?',
-        [concluida ? 1 : 0, subtarefaId],
-        (err) => {
-            if (err) {
-                console.error('❌ Erro ao atualizar subtarefa:', err);
-                return res.status(500).json({ erro: 'Erro ao atualizar subtarefa' });
-            }
-            console.log('✅ Subtarefa atualizada');
-            res.json({ mensagem: 'Subtarefa atualizada!' });
-        }
-    );
+        await db.query(
+            'UPDATE subtarefas SET concluida = ? WHERE id = ?',
+            [concluida ? 1 : 0, subtarefaId]
+        );
+
+        console.log('✅ Subtarefa atualizada');
+        res.json({ mensagem: 'Subtarefa atualizada!' });
+    } catch (error) {
+        console.error('❌ Erro ao atualizar subtarefa:', error);
+        res.status(500).json({ erro: 'Erro ao atualizar subtarefa' });
+    }
 });
 
 // Deletar tarefa (qualquer usuário pode deletar qualquer tarefa)
-app.delete('/api/tarefas/:id', auth.autenticar, (req, res) => {
-    const tarefaId = req.params.id;
+app.delete('/api/tarefas/:id', auth.autenticar, async (req, res) => {
+    try {
+        const tarefaId = req.params.id;
 
-    console.log(`🗑️ Deletando tarefa ${tarefaId}`);
+        console.log(`🗑️ Deletando tarefa ${tarefaId}`);
 
-    db.run('DELETE FROM tarefas WHERE id = ?', [tarefaId], (err) => {
-        if (err) {
-            console.error('❌ Erro ao deletar tarefa:', err);
-            return res.status(500).json({ erro: 'Erro ao deletar tarefa' });
-        }
+        await db.query('DELETE FROM tarefas WHERE id = ?', [tarefaId]);
+
         console.log('✅ Tarefa deletada');
         res.json({ mensagem: 'Tarefa deletada com sucesso!' });
-    });
+    } catch (error) {
+        console.error('❌ Erro ao deletar tarefa:', error);
+        res.status(500).json({ erro: 'Erro ao deletar tarefa' });
+    }
 });
 
 // ============================================================

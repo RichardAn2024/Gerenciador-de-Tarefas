@@ -1,98 +1,102 @@
-// database.js - Configuração do banco de dados SQLite
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-const bcrypt = require('bcryptjs');
+// database.js - Configuração do banco de dados MySQL
+const mysql = require('mysql2');
+require('dotenv').config();
 
 // ============================================================
-//  CONFIGURAÇÃO DO BANCO DE DADOS PARA PRODUÇÃO
+//  CONFIGURAÇÃO DO BANCO DE DADOS MYSQL
 // ============================================================
 
-// Usar caminho absoluto para o banco de dados
-const dbPath = path.join(__dirname, 'database.sqlite');
-console.log(`📁 Banco de dados em: ${dbPath}`);
+// Criar pool de conexões (mais eficiente que conexão única)
+const pool = mysql.createPool({
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'mini_monday',
+    port: process.env.DB_PORT || 3306,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
 
-const db = new sqlite3.Database(dbPath);
+// Promise wrapper para usar async/await
+const db = pool.promise();
 
-// Criar tabelas se não existirem
-db.serialize(() => {
-    // Tabela de usuários (com coluna is_admin)
-    db.run(`
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            senha TEXT NOT NULL,
-            is_admin INTEGER DEFAULT 0,
-            criado_em DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    `, function (err) {
-        if (err) {
-            console.error('❌ Erro ao criar tabela usuarios:', err);
-            return;
-        }
+console.log(`📁 Conectando ao MySQL: ${process.env.DB_HOST || 'localhost'}/${process.env.DB_NAME || 'mini_monday'}`);
+
+// ============================================================
+//  INICIALIZAR TABELAS
+// ============================================================
+
+async function inicializarBanco() {
+    try {
+        // 1. Tabela de usuários
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                nome VARCHAR(100) NOT NULL,
+                email VARCHAR(100) UNIQUE NOT NULL,
+                senha VARCHAR(255) NOT NULL,
+                is_admin TINYINT DEFAULT 0,
+                criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
         console.log('✅ Tabela usuarios criada/verificada');
 
-        // Verificar se já existe um admin
-        db.get('SELECT * FROM usuarios WHERE is_admin = 1', [], (err, row) => {
-            if (err) {
-                console.error('❌ Erro ao verificar admin:', err);
-                return;
-            }
+        // 2. Tabela de tarefas
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS tarefas (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                usuario_id INT NOT NULL,
+                titulo VARCHAR(255) NOT NULL,
+                status ENUM('todo', 'doing', 'done') DEFAULT 'todo',
+                tag VARCHAR(50),
+                responsavel_id INT,
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+                FOREIGN KEY (responsavel_id) REFERENCES usuarios(id) ON DELETE SET NULL
+            )
+        `);
+        console.log('✅ Tabela tarefas criada/verificada');
 
-            if (!row) {
-                // Criar admin padrão
-                const salt = bcrypt.genSaltSync(10);
-                const senhaHash = bcrypt.hashSync('admin123', salt);
-                db.run(
-                    'INSERT INTO usuarios (nome, email, senha, is_admin) VALUES (?, ?, ?, ?)',
-                    ['Administrador', 'admin@admin.com', senhaHash, 1],
-                    function (err) {
-                        if (err) {
-                            console.error('❌ Erro ao criar admin:', err);
-                            return;
-                        }
-                        console.log('✅ Usuário admin criado!');
-                        console.log('   Email: admin@admin.com');
-                        console.log('   Senha: admin123');
-                    }
-                );
-            } else {
-                console.log('✅ Admin já existe:', row.email);
-            }
-        });
-    });
+        // 3. Tabela de subtarefas
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS subtarefas (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                tarefa_id INT NOT NULL,
+                texto TEXT NOT NULL,
+                concluida TINYINT DEFAULT 0,
+                FOREIGN KEY (tarefa_id) REFERENCES tarefas(id) ON DELETE CASCADE
+            )
+        `);
+        console.log('✅ Tabela subtarefas criada/verificada');
 
-    // Tabela de tarefas (COM coluna responsavel_id)
-    db.run(`
-        CREATE TABLE IF NOT EXISTS tarefas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario_id INTEGER NOT NULL,
-            titulo TEXT NOT NULL,
-            status TEXT DEFAULT 'todo',
-            tag TEXT,
-            responsavel_id INTEGER,
-            data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE,
-            FOREIGN KEY (responsavel_id) REFERENCES usuarios (id) ON DELETE SET NULL
-        )
-    `, (err) => {
-        if (!err) console.log('✅ Tabela tarefas criada/verificada');
-    });
+        // 4. Verificar/Criar admin padrão
+        const [rows] = await db.query('SELECT * FROM usuarios WHERE is_admin = 1 LIMIT 1');
 
-    // Tabela de subtarefas
-    db.run(`
-        CREATE TABLE IF NOT EXISTS subtarefas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            tarefa_id INTEGER NOT NULL,
-            texto TEXT NOT NULL,
-            concluida INTEGER DEFAULT 0,
-            FOREIGN KEY (tarefa_id) REFERENCES tarefas (id) ON DELETE CASCADE
-        )
-    `, (err) => {
-        if (!err) console.log('✅ Tabela subtarefas criada/verificada');
-    });
+        if (rows.length === 0) {
+            const bcrypt = require('bcryptjs');
+            const salt = bcrypt.genSaltSync(10);
+            const senhaHash = bcrypt.hashSync('admin123', salt);
 
-    console.log('✅ Banco de dados inicializado!');
-});
+            await db.query(
+                'INSERT INTO usuarios (nome, email, senha, is_admin) VALUES (?, ?, ?, ?)',
+                ['Administrador', 'admin@admin.com', senhaHash, 1]
+            );
+            console.log('✅ Usuário admin criado!');
+            console.log('   Email: admin@admin.com');
+            console.log('   Senha: admin123');
+        } else {
+            console.log('✅ Admin já existe:', rows[0].email);
+        }
+
+        console.log('✅ Banco de dados MySQL inicializado!');
+    } catch (error) {
+        console.error('❌ Erro ao inicializar banco:', error);
+        throw error;
+    }
+}
+
+// Inicializar banco
+inicializarBanco();
 
 module.exports = db;
