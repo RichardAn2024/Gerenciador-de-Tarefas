@@ -1,16 +1,12 @@
-// auth.js - Funções de autenticação (VERSÃO MYSQL - HOSTINGER)
+// auth.js - Autenticação para teste local
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const db = require('./database');
 require('dotenv').config();
 
-// ============================================================
-//  CHAVE SECRETA DO JWT
-// ============================================================
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-local';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-nao-use-em-producao';
-
-console.log('🔐 Auth inicializado');
+console.log('🔐 Auth inicializado (Local)');
 
 // ============================================================
 //  FUNÇÕES DE AUTENTICAÇÃO
@@ -32,7 +28,6 @@ function verificarToken(token) {
     }
 }
 
-// Middleware para verificar token
 function autenticar(req, res, next) {
     const token = req.headers['authorization']?.split(' ')[1];
 
@@ -51,7 +46,6 @@ function autenticar(req, res, next) {
     next();
 }
 
-// Middleware para verificar se é admin
 function adminApenas(req, res, next) {
     if (req.isAdmin !== 1) {
         return res.status(403).json({ erro: 'Acesso negado. Apenas administradores podem acessar.' });
@@ -59,13 +53,8 @@ function adminApenas(req, res, next) {
     next();
 }
 
-// ============================================================
-//  FUNÇÕES DE USUÁRIO
-// ============================================================
-
 async function cadastrarUsuario(nome, email, senha) {
     try {
-        // Verificar se email já existe
         const [rows] = await db.query('SELECT id FROM usuarios WHERE email = ?', [email]);
 
         if (rows.length > 0) {
@@ -122,10 +111,6 @@ async function loginUsuario(email, senha) {
     }
 }
 
-// ============================================================
-//  FUNÇÕES DE ADMIN
-// ============================================================
-
 async function listarUsuarios() {
     try {
         const [rows] = await db.query(`
@@ -142,7 +127,6 @@ async function listarUsuarios() {
 
 async function deletarUsuario(id) {
     try {
-        // Verificar se é admin
         const [rows] = await db.query('SELECT is_admin FROM usuarios WHERE id = ?', [id]);
 
         if (rows.length > 0 && rows[0].is_admin === 1) {

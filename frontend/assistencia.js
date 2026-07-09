@@ -1,5 +1,6 @@
 /* ============================================================
-   script.js - Lógica completa do Dashboard (COM PRAZO E FILTRO)
+   assistencia.js - Lógica da página de Assistência Técnica
+   Filtra apenas tarefas com tag 'assistencia'
    ============================================================ */
 
 // --- Estado ---
@@ -15,7 +16,6 @@ const openCreateBtn = document.getElementById('openCreateBtn');
 const clearAllBtn = document.getElementById('clearAllBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 const userName = document.getElementById('userName');
-const adminLink = document.getElementById('adminLink');
 
 // --- Modal de Criação ---
 const createModal = document.getElementById('createModal');
@@ -70,9 +70,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     usuarioLogado = getUsuario();
     if (usuarioLogado) {
         userName.textContent = `👤 ${usuarioLogado.nome}`;
-        if (usuarioLogado.isAdmin) {
-            adminLink.style.display = 'inline-flex';
-        }
     }
 
     await carregarUsuarios();
@@ -122,12 +119,10 @@ function popularSelectResponsaveis(select) {
 function popularFilterResponsavel() {
     if (!filterResponsavel) return;
 
-    // Limpar opções (manter a primeira)
     while (filterResponsavel.options.length > 1) {
         filterResponsavel.remove(1);
     }
 
-    // Primeiro o próprio usuário
     if (usuarioLogado) {
         const optionEu = document.createElement('option');
         optionEu.value = usuarioLogado.id;
@@ -137,7 +132,6 @@ function popularFilterResponsavel() {
         filterResponsavel.appendChild(optionEu);
     }
 
-    // Depois os outros
     usuariosDisponiveis.forEach(usuario => {
         if (usuarioLogado && usuario.id === usuarioLogado.id) return;
         const option = document.createElement('option');
@@ -148,12 +142,12 @@ function popularFilterResponsavel() {
 }
 
 // ============================================================
-//  CARREGAR TAREFAS
+//  CARREGAR TAREFAS (APENAS ASSISTÊNCIA TÉCNICA)
 // ============================================================
 
 async function carregarTarefasDoServidor() {
     try {
-        tarefas = await carregarTarefas();
+        tarefas = await carregarTarefasAssistencia();
         render();
     } catch (error) {
         console.error('Erro ao carregar tarefas:', error);
@@ -166,24 +160,20 @@ async function carregarTarefasDoServidor() {
 // ============================================================
 
 function render() {
-    // Filtrar por status
     let filtered = tarefas;
     if (currentFilter !== 'all') {
         filtered = tarefas.filter(t => t.status === currentFilter);
     }
 
-    // Filtrar por responsável
     if (currentResponsavelFilter !== 'all') {
         filtered = filtered.filter(t => t.responsavel_id == currentResponsavelFilter);
     }
 
-    // Limpar listas
     for (const status of ['todo', 'doing', 'done']) {
         const list = document.getElementById(statusMap[status].listId);
         list.innerHTML = '';
     }
 
-    // Preencher colunas
     for (const status of ['todo', 'doing', 'done']) {
         const list = document.getElementById(statusMap[status].listId);
         const tasksInStatus = filtered.filter(t => t.status === status);
@@ -191,7 +181,7 @@ function render() {
         if (tasksInStatus.length === 0) {
             const empty = document.createElement('div');
             empty.className = 'empty-state';
-            empty.textContent = 'Nenhuma tarefa aqui';
+            empty.textContent = 'Nenhuma tarefa de assistência aqui';
             list.appendChild(empty);
             continue;
         }
@@ -217,20 +207,18 @@ function createTaskCard(task) {
     card.dataset.id = task.id;
 
     const borderColors = {
-        todo: '#F57C00',
+        todo: '#2196F3',
         doing: '#F57C00',
         done: '#00a86b'
     };
-    card.style.borderLeftColor = borderColors[task.status] || '#F57C00';
+    card.style.borderLeftColor = borderColors[task.status] || '#2196F3';
 
-    // Verificar se está atrasada
     const isOverdue = task.prazo && task.status !== 'done' && new Date(task.prazo) < new Date();
     if (isOverdue) {
         card.style.borderLeftColor = '#ff4d4f';
         card.style.borderLeftWidth = '6px';
     }
 
-    // Título
     const title = document.createElement('div');
     title.className = 'task-title';
     title.textContent = task.titulo;
@@ -239,7 +227,6 @@ function createTaskCard(task) {
     }
     card.appendChild(title);
 
-    // Criador
     if (task.criador_nome) {
         const criadorEl = document.createElement('div');
         criadorEl.className = 'task-criador';
@@ -248,7 +235,7 @@ function createTaskCard(task) {
         criadorEl.innerHTML = `👤 <strong>Criador:</strong> ${texto}`;
         if (isEu) {
             criadorEl.style.background = '#e3edff';
-            criadorEl.style.border = '1px solid #F57C00';
+            criadorEl.style.border = '1px solid #2196F3';
             criadorEl.style.padding = '2px 10px';
             criadorEl.style.borderRadius = '12px';
             criadorEl.style.display = 'inline-block';
@@ -259,28 +246,24 @@ function createTaskCard(task) {
         card.appendChild(criadorEl);
     }
 
-    // Responsável
     if (task.responsavel_nome) {
         const responsavelEl = document.createElement('div');
         responsavelEl.className = 'task-responsavel';
         const isEu = usuarioLogado && task.responsavel_id === usuarioLogado.id;
-        const icone = isEu ? '👤' : '👤';
         const texto = isEu ? `Eu (${task.responsavel_nome})` : task.responsavel_nome;
-        responsavelEl.innerHTML = `${icone} <strong>Responsável:</strong> ${texto}`;
+        responsavelEl.innerHTML = `👤 <strong>Responsável:</strong> ${texto}`;
         if (isEu) {
-            responsavelEl.style.background = '#fff3e0';
-            responsavelEl.style.border = '1px solid #F57C00';
+            responsavelEl.style.background = '#e3f2fd';
+            responsavelEl.style.border = '1px solid #2196F3';
         }
         card.appendChild(responsavelEl);
     }
 
-    // Data de criação
     const dateEl = document.createElement('div');
     dateEl.className = 'task-date';
     dateEl.innerHTML = `📅 Criado: ${formatarData(task.data_criacao)}`;
     card.appendChild(dateEl);
 
-    // Data de prazo (NOVO)
     if (task.prazo) {
         const prazoEl = document.createElement('div');
         prazoEl.className = 'task-date task-prazo';
@@ -293,12 +276,11 @@ function createTaskCard(task) {
             prazoEl.style.color = '#ff4d4f';
             prazoEl.style.fontWeight = 'bold';
         } else {
-            prazoEl.style.color = '#F57C00';
+            prazoEl.style.color = '#2196F3';
         }
         card.appendChild(prazoEl);
     }
 
-    // Subtarefas
     const subtasksEl = document.createElement('div');
     subtasksEl.className = 'task-subtasks';
     if (task.subtarefas && task.subtarefas.length > 0) {
@@ -333,7 +315,6 @@ function createTaskCard(task) {
         card.appendChild(subtasksEl);
     }
 
-    // Meta
     const meta = document.createElement('div');
     meta.className = 'task-meta';
 
@@ -343,12 +324,19 @@ function createTaskCard(task) {
         const span = document.createElement('span');
         span.className = `tag ${task.tag}`;
         const icons = {
+            assistencia: '🔧',
             urgent: '🔴',
             important: '🟡',
             tranquilo: '🔵'
         };
-        const tagName = task.tag === 'tranquilo' ? 'Tranquilo' : task.tag.charAt(0).toUpperCase() + task.tag.slice(1);
+        const tagName = task.tag === 'assistencia' ? 'Assistência' :
+            task.tag === 'tranquilo' ? 'Tranquilo' :
+                task.tag.charAt(0).toUpperCase() + task.tag.slice(1);
         span.textContent = `${icons[task.tag] || ''} ${tagName}`;
+        if (task.tag === 'assistencia') {
+            span.style.background = '#e3f2fd';
+            span.style.color = '#1565C0';
+        }
         tagsContainer.appendChild(span);
     }
 
@@ -398,7 +386,6 @@ function createTaskCard(task) {
     meta.appendChild(actions);
     card.appendChild(meta);
 
-    // Drag & Drop
     card.addEventListener('dragstart', handleDragStart);
     card.addEventListener('dragend', handleDragEnd);
 
@@ -471,13 +458,30 @@ async function moveTask(id, direction, targetStatus = null) {
 }
 
 // ============================================================
-//  VERIFICAR E ATUALIZAR STATUS DA TAREFA
+//  ALTERNAR SUBTAREFA
 // ============================================================
+
+async function toggleSubtask(taskId, subtaskId) {
+    const task = tarefas.find(t => t.id === taskId);
+    if (!task) return;
+    const subtask = task.subtarefas.find(s => s.id === subtaskId);
+    if (!subtask) return;
+
+    const novaConcluida = subtask.concluida ? 0 : 1;
+
+    try {
+        await alternarSubtarefa(subtaskId, novaConcluida);
+        subtask.concluida = novaConcluida;
+        await verificarEAtualizarStatusTarefa(taskId);
+        render();
+    } catch (error) {
+        alert(error.message);
+    }
+}
 
 async function verificarEAtualizarStatusTarefa(taskId) {
     const task = tarefas.find(t => t.id === taskId);
     if (!task) return;
-
     if (!task.subtarefas || task.subtarefas.length === 0) return;
 
     const todasConcluidas = task.subtarefas.every(s => s.concluida === 1);
@@ -505,34 +509,12 @@ async function verificarEAtualizarStatusTarefa(taskId) {
 }
 
 // ============================================================
-//  ALTERNAR SUBTAREFA
-// ============================================================
-
-async function toggleSubtask(taskId, subtaskId) {
-    const task = tarefas.find(t => t.id === taskId);
-    if (!task) return;
-    const subtask = task.subtarefas.find(s => s.id === subtaskId);
-    if (!subtask) return;
-
-    const novaConcluida = subtask.concluida ? 0 : 1;
-
-    try {
-        await alternarSubtarefa(subtaskId, novaConcluida);
-        subtask.concluida = novaConcluida;
-        await verificarEAtualizarStatusTarefa(taskId);
-        render();
-    } catch (error) {
-        alert(error.message);
-    }
-}
-
-// ============================================================
 //  MODAL DE CRIAÇÃO
 // ============================================================
 
 function openCreateModal() {
     createTitle.value = '';
-    createTag.value = '';
+    createTag.value = 'assistencia';
     createResponsavel.value = '';
     createPrazo.value = '';
     subtaskList.innerHTML = '';
@@ -543,7 +525,7 @@ function openCreateModal() {
 function closeCreateModal() {
     createModal.classList.remove('active');
     createTitle.value = '';
-    createTag.value = '';
+    createTag.value = 'assistencia';
     createResponsavel.value = '';
     createPrazo.value = '';
     subtaskList.innerHTML = '';
@@ -600,7 +582,7 @@ function loadSubtasksIntoContainer(container, subtasks) {
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.checked = subtask.concluida === 1;
-            checkbox.style.cssText = 'width: 16px; height: 16px; accent-color: #F57C00; cursor: pointer;';
+            checkbox.style.cssText = 'width: 16px; height: 16px; accent-color: #2196F3; cursor: pointer;';
             checkbox.addEventListener('change', () => {
                 input.style.textDecoration = checkbox.checked ? 'line-through' : 'none';
                 input.style.color = checkbox.checked ? '#8c929a' : '#1a1a1a';
@@ -654,7 +636,7 @@ async function createTask() {
         return;
     }
 
-    const tag = createTag.value;
+    const tag = 'assistencia';
     const responsavel_id = createResponsavel.value || null;
     const prazo = createPrazo.value || null;
     const subtarefas = getSubtasksFromContainer(subtaskList);
@@ -679,7 +661,7 @@ function openEditModal(taskId) {
 
     editingTaskId = taskId;
     editTitle.value = task.titulo;
-    editTag.value = task.tag || '';
+    editTag.value = task.tag || 'assistencia';
     editResponsavel.value = task.responsavel_id || '';
     editPrazo.value = task.prazo || '';
     loadSubtasksIntoContainer(editSubtaskList, task.subtarefas || []);
@@ -691,7 +673,7 @@ function closeEditModal() {
     editModal.classList.remove('active');
     editingTaskId = null;
     editTitle.value = '';
-    editTag.value = '';
+    editTag.value = 'assistencia';
     editResponsavel.value = '';
     editPrazo.value = '';
     editSubtaskList.innerHTML = '';
@@ -706,7 +688,7 @@ async function salvarEdicaoComVerificacao() {
         return;
     }
 
-    const tag = editTag.value;
+    const tag = 'assistencia';
     const responsavel_id = editResponsavel.value || null;
     const prazo = editPrazo.value || null;
     const subtarefas = getEditSubtasks();
@@ -714,12 +696,6 @@ async function salvarEdicaoComVerificacao() {
     try {
         await atualizarTarefa(editingTaskId, titulo, tag, subtarefas, responsavel_id, prazo);
         await carregarTarefasDoServidor();
-
-        const task = tarefas.find(t => t.id === editingTaskId);
-        if (task && task.subtarefas && task.subtarefas.length > 0) {
-            await verificarEAtualizarStatusTarefa(editingTaskId);
-        }
-
         closeEditModal();
         render();
     } catch (error) {
@@ -768,7 +744,7 @@ async function clearAllTasks() {
     if (tarefas.length === 0) return;
 
     confirmTitle.textContent = '⚠️ Limpar Todas as Tarefas';
-    confirmMessage.textContent = `Tem certeza que deseja excluir TODAS as ${tarefas.length} tarefas? Esta ação não pode ser desfeita.`;
+    confirmMessage.textContent = `Tem certeza que deseja excluir TODAS as ${tarefas.length} tarefas de assistência? Esta ação não pode ser desfeita.`;
     confirmModal.classList.add('active');
 
     confirmActionBtn.onclick = async () => {
@@ -802,14 +778,13 @@ function updateStats() {
     const done = tarefas.filter(t => t.status === 'done').length;
     const pending = total - done;
 
-    // Tarefas atrasadas
     const hoje = new Date();
     const overdue = tarefas.filter(t => t.prazo && t.status !== 'done' && new Date(t.prazo) < hoje).length;
 
-    document.getElementById('totalTasks').textContent = total;
-    document.getElementById('completedTasks').textContent = done;
-    document.getElementById('pendingTasks').textContent = pending;
-    document.getElementById('overdueTasks').textContent = overdue;
+    document.getElementById('totalTasksAssist').textContent = total;
+    document.getElementById('completedTasksAssist').textContent = done;
+    document.getElementById('pendingTasksAssist').textContent = pending;
+    document.getElementById('overdueTasksAssist').textContent = overdue;
 }
 
 function formatarData(dataStr) {
@@ -836,7 +811,6 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
     });
 });
 
-// Filtrar por responsável
 if (filterResponsavel) {
     filterResponsavel.addEventListener('change', () => {
         currentResponsavelFilter = filterResponsavel.value;
@@ -849,7 +823,6 @@ if (filterResponsavel) {
 // ============================================================
 
 function configurarEventos() {
-    // --- Criação ---
     openCreateBtn.addEventListener('click', openCreateModal);
     saveCreateBtn.addEventListener('click', createTask);
     cancelCreateBtn.addEventListener('click', closeCreateModal);
@@ -864,7 +837,6 @@ function configurarEventos() {
         addSubtaskInput(subtaskList);
     });
 
-    // --- Edição ---
     saveEditBtn.addEventListener('click', salvarEdicaoComVerificacao);
     cancelEditBtn.addEventListener('click', closeEditModal);
     closeModalBtn.addEventListener('click', closeEditModal);
@@ -878,17 +850,14 @@ function configurarEventos() {
         addSubtaskInput(editSubtaskList);
     });
 
-    // --- Confirmação ---
     cancelConfirmBtn.addEventListener('click', closeConfirmModal);
     closeConfirmBtn.addEventListener('click', closeConfirmModal);
     confirmModal.addEventListener('click', (e) => {
         if (e.target === confirmModal) closeConfirmModal();
     });
 
-    // --- Limpar tudo ---
     clearAllBtn.addEventListener('click', clearAllTasks);
 
-    // --- Logout ---
     logoutBtn.addEventListener('click', () => {
         confirmTitle.textContent = '🚪 Sair';
         confirmMessage.textContent = 'Tem certeza que deseja sair?';
@@ -899,7 +868,6 @@ function configurarEventos() {
         };
     });
 
-    // --- Fechar com ESC ---
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if (createModal.classList.contains('active')) closeCreateModal();
@@ -909,10 +877,5 @@ function configurarEventos() {
     });
 }
 
-// ============================================================
-//  EXPORTAR FUNÇÕES
-// ============================================================
-
 window.carregarTarefasDoServidor = carregarTarefasDoServidor;
 window.render = render;
-window.verificarEAtualizarStatusTarefa = verificarEAtualizarStatusTarefa;

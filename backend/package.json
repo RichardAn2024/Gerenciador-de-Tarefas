@@ -1,14 +1,11 @@
 {
     "name": "mini-monday-backend",
     "version": "1.0.0",
-    "description": "Backend para o Mini Monday",
+    "description": "Backend para Mini Monday - Teste Local",
     "main": "server.js",
     "scripts": {
         "start": "node server.js",
         "dev": "node server.js"
-    },
-    "engines": {
-        "node": "22.x"
     },
     "dependencies": {
         "bcryptjs": "^2.4.3",
@@ -16,7 +13,6 @@
         "dotenv": "^16.0.3",
         "express": "^4.18.2",
         "jsonwebtoken": "^9.0.0",
-        "mysql2": "^3.22.5",
-        "@supabase/supabase-js": "^2.0.0"
+        "mysql2": "^3.22.5"
     }
 }

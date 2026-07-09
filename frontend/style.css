@@ -1,5 +1,5 @@
 /* ============================================================
-   style.css - Todos os estilos do Mini Monday
+   style.css - Todos os estilos do Volmanday
    ============================================================ */
 
 /* --- Reset e Estilos Globais --- */
@@ -8,6 +8,64 @@
     padding: 0;
     box-sizing: border-box;
     font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+}
+
+/* ============================================================
+   LOGO COM IMAGEM PERSONALIZADA (simbolicon.png)
+   ============================================================ */
+
+.logo-icon {
+    background: rgba(50, 50, 50, 0.8);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    color: white;
+    font-weight: 700;
+    font-size: 20px;
+    padding: 4px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+}
+
+.logo-icon:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.logo-img {
+    width: 120%;
+    height: 120%;
+    object-fit: contain;
+    display: block;
+    margin: -10%;
+}
+
+/* Ajuste para o logo no auth-box (login/cadastro) - MAIOR */
+.auth-logo .logo-icon {
+    width: 60px;
+    height: 60px;
+    padding: 6px;
+    background: rgba(50, 50, 50, 0.85);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.auth-logo .logo-icon .logo-img {
+    width: 130%;
+    height: 130%;
+    object-fit: contain;
+    margin: -15%;
 }
 
 body {
@@ -38,15 +96,6 @@ body {
     gap: 12px;
 }
 
-.logo-icon {
-    background: #0066ff;
-    color: white;
-    font-weight: 700;
-    font-size: 20px;
-    padding: 8px 14px;
-    border-radius: 8px;
-}
-
 .logo-text {
     font-size: 24px;
     font-weight: 600;
@@ -54,7 +103,16 @@ body {
 }
 
 .logo-text span {
-    color: #0066ff;
+    color: #F57C00;
+}
+
+.admin-badge {
+    background: #F57C00;
+    color: white;
+    font-size: 12px;
+    padding: 2px 12px;
+    border-radius: 20px;
+    font-weight: 600;
 }
 
 .header-right {
@@ -80,7 +138,7 @@ body {
 .stat-number {
     font-weight: 700;
     font-size: 18px;
-    color: #0066ff;
+    color: #F57C00;
 }
 
 .stat-label {
@@ -137,14 +195,14 @@ body {
 }
 
 .btn-primary {
-    background: #0066ff;
+    background: #F57C00;
     color: white;
 }
 
 .btn-primary:hover {
-    background: #0052cc;
+    background: #E65100;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 102, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(245, 124, 0, 0.3);
 }
 
 .btn-danger {
@@ -167,6 +225,11 @@ body {
     border-color: #b0b8c1;
 }
 
+.btn-full {
+    width: 100%;
+    justify-content: center;
+}
+
 /* --- Filtros --- */
 .filter-group {
     display: flex;
@@ -187,14 +250,14 @@ body {
 }
 
 .filter-btn:hover {
-    border-color: #0066ff;
-    color: #0066ff;
+    border-color: #F57C00;
+    color: #F57C00;
 }
 
 .filter-btn.active {
-    background: #0066ff;
+    background: #F57C00;
     color: white;
-    border-color: #0066ff;
+    border-color: #F57C00;
 }
 
 /* --- Board --- */
@@ -255,7 +318,7 @@ body {
     padding: 14px 16px;
     border-radius: 10px;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-    border-left: 4px solid #0066ff;
+    border-left: 4px solid #F57C00;
     transition: 0.2s;
     cursor: grab;
     position: relative;
@@ -287,13 +350,22 @@ body {
     gap: 4px;
 }
 
-/* --- Responsável --- */
+.task-criador {
+    font-size: 12px;
+    color: #4a4a4a;
+    margin-bottom: 4px;
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    margin-bottom: 6px;
+}
+
 .task-responsavel {
     font-size: 12px;
     color: #4a4a4a;
     margin-bottom: 4px;
     display: inline-block;
-    background: #f0f4ff;
+    background: #fff3e0;
     padding: 2px 10px;
     border-radius: 12px;
     margin-bottom: 6px;
@@ -301,7 +373,7 @@ body {
 }
 
 .task-responsavel strong {
-    color: #0066ff;
+    color: #F57C00;
 }
 
 .task-responsavel:hover {
@@ -328,7 +400,7 @@ body {
     width: 14px;
     height: 14px;
     cursor: pointer;
-    accent-color: #0066ff;
+    accent-color: #F57C00;
 }
 
 .subtask-item .subtask-text {
@@ -408,14 +480,14 @@ body {
 }
 
 .task-actions .edit-btn:hover {
-    color: #0066ff;
-    background: #e3edff;
+    color: #F57C00;
+    background: #fff3e0;
 }
 
 /* --- Drag & Drop --- */
 .column.drag-over {
     background: #e3e9f5;
-    border: 2px dashed #0066ff;
+    border: 2px dashed #F57C00;
 }
 
 /* --- Estado vazio --- */
@@ -553,8 +625,8 @@ body {
 
 .modal-body input[type="text"]:focus {
     outline: none;
-    border-color: #0066ff;
-    box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.15);
+    border-color: #F57C00;
+    box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.15);
 }
 
 .modal-body select {
@@ -569,8 +641,8 @@ body {
 
 .modal-body select:focus {
     outline: none;
-    border-color: #0066ff;
-    box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.15);
+    border-color: #F57C00;
+    box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.15);
 }
 
 /* --- Subtarefas no modal --- */
@@ -601,8 +673,8 @@ body {
 
 .subtask-input-row input[type="text"]:focus {
     outline: none;
-    border-color: #0066ff;
-    box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.15);
+    border-color: #F57C00;
+    box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.15);
 }
 
 .subtask-input-row .remove-subtask-btn {
@@ -629,27 +701,85 @@ body {
 }
 
 /* ============================================================
-   PÁGINAS DE AUTENTICAÇÃO
+   PÁGINAS DE AUTENTICAÇÃO - COM IMAGEM PERSONALIZADA
    ============================================================ */
 .auth-page {
-    background: #f5f6f8;
+    background: url('../images/fundopage.jpg') no-repeat center center fixed;
+    background-size: cover;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
     padding: 24px;
+    position: relative;
+}
+
+/* Overlay escuro para melhor legibilidade do texto */
+.auth-page::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 0;
+}
+
+/* Círculos decorativos flutuantes */
+.auth-page .circle-decoration {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    z-index: 0;
+    pointer-events: none;
+    backdrop-filter: blur(2px);
+}
+
+.auth-page .circle-decoration:nth-child(1) {
+    width: 250px;
+    height: 250px;
+    top: -80px;
+    right: -60px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.auth-page .circle-decoration:nth-child(2) {
+    width: 180px;
+    height: 180px;
+    bottom: -60px;
+    left: -50px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .auth-container {
     width: 100%;
     max-width: 420px;
+    position: relative;
+    z-index: 1;
 }
 
+/* ============================================================
+   AUTH-BOX COM EFEITO GLASSMORPHISM (TRANSPARENTE)
+   ============================================================ */
 .auth-box {
-    background: white;
-    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 20px;
     padding: 40px 32px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    transition: all 0.3s ease;
+}
+
+.auth-box:hover {
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow:
+        0 12px 48px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .auth-logo {
@@ -660,27 +790,41 @@ body {
     margin-bottom: 24px;
 }
 
+.auth-logo .logo-text {
+    font-size: 24px;
+    font-weight: 600;
+    color: #ffffff;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.auth-logo .logo-text span {
+    color: #F57C00;
+}
+
 .auth-box h2 {
     text-align: center;
     font-size: 24px;
-    color: #1a1a1a;
+    color: #ffffff;
     margin-bottom: 4px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .auth-box p {
     text-align: center;
-    color: #6b6f76;
+    color: rgba(255, 255, 255, 0.8);
     margin-bottom: 24px;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .auth-error {
-    background: #ffebee;
+    background: rgba(255, 235, 238, 0.9);
     color: #c62828;
     padding: 12px 16px;
     border-radius: 8px;
     margin-bottom: 16px;
     font-size: 14px;
     border-left: 4px solid #c62828;
+    backdrop-filter: blur(4px);
 }
 
 .form-group {
@@ -691,40 +835,154 @@ body {
     display: block;
     font-weight: 600;
     font-size: 14px;
-    color: #1a1a1a;
+    color: rgba(255, 255, 255, 0.9);
     margin-bottom: 4px;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .form-group input {
     width: 100%;
     padding: 10px 14px;
-    border: 1.5px solid #e1e4e8;
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
     font-size: 15px;
-    transition: 0.2s;
+    transition: 0.3s ease;
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    backdrop-filter: blur(4px);
+}
+
+.form-group input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
 }
 
 .form-group input:focus {
     outline: none;
-    border-color: #0066ff;
-    box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.15);
+    border-color: #F57C00;
+    box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.2);
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.auth-box .btn-primary {
+    background: #F57C00;
+    color: white;
+    width: 100%;
+    font-weight: 700;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s ease;
+    box-shadow: 0 4px 16px rgba(245, 124, 0, 0.3);
+}
+
+.auth-box .btn-primary:hover {
+    background: #E65100;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(245, 124, 0, 0.4);
 }
 
 .auth-links {
     text-align: center;
     margin-top: 20px;
     padding-top: 16px;
-    border-top: 1px solid #e1e4e8;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.auth-links p {
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 0;
 }
 
 .auth-links a {
-    color: #0066ff;
+    color: #F57C00;
     text-decoration: none;
     font-weight: 600;
+    transition: 0.3s ease;
 }
 
 .auth-links a:hover {
+    color: #FFB74D;
     text-decoration: underline;
+}
+
+/* ============================================================
+   ADMIN
+   ============================================================ */
+.admin-panel {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.admin-panel h2 {
+    margin-bottom: 20px;
+    color: #1a1a1a;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.admin-table th {
+    text-align: left;
+    padding: 12px 16px;
+    background: #f5f6f8;
+    color: #4a4a4a;
+    font-weight: 600;
+    border-bottom: 2px solid #e1e4e8;
+}
+
+.admin-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e1e4e8;
+    color: #1a1a1a;
+}
+
+.admin-table tr:hover td {
+    background: #f8f9fa;
+}
+
+.admin-table .badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.admin-table .badge-tarefas {
+    background: #e3f2fd;
+    color: #0066cc;
+}
+
+.admin-table .badge-admin {
+    background: #fff3e0;
+    color: #F57C00;
+}
+
+.loading-text {
+    text-align: center;
+    color: #8c929a;
+    padding: 40px !important;
+}
+
+.empty-text {
+    text-align: center;
+    color: #8c929a;
+    padding: 40px !important;
+}
+
+.error-text {
+    text-align: center;
+    color: #ff4d4f;
+    padding: 40px !important;
 }
 
 /* ============================================================
@@ -778,4 +1036,106 @@ body {
     .subtask-input-row {
         flex-wrap: wrap;
     }
+
+    .auth-box {
+        padding: 24px 20px;
+    }
+
+    .auth-page .circle-decoration {
+        display: none;
+    }
+}
+
+/* ============================================================
+   FILTRO POR RESPONSÁVEL
+   ============================================================ */
+
+.filter-responsavel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 8px;
+}
+
+.filter-responsavel label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #4a4a4a;
+    white-space: nowrap;
+}
+
+.filter-responsavel select {
+    padding: 6px 12px;
+    border: 1.5px solid #e1e4e8;
+    border-radius: 8px;
+    font-size: 13px;
+    background: white;
+    cursor: pointer;
+    transition: 0.2s;
+    min-width: 120px;
+}
+
+.filter-responsavel select:focus {
+    outline: none;
+    border-color: #F57C00;
+    box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.15);
+}
+
+/* ============================================================
+   PRAZO NAS TAREFAS
+   ============================================================ */
+
+.task-prazo {
+    font-size: 12px;
+    margin-top: 2px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(245, 124, 0, 0.08);
+    display: inline-block;
+}
+
+.task-prazo[style*="color: #ff4d4f"] {
+    background: rgba(255, 77, 79, 0.1);
+}
+
+/* Estatística de atrasadas */
+.stat-item:last-child .stat-number {
+    color: #ff4d4f;
+}
+
+/* Responsividade do filtro */
+@media (max-width: 850px) {
+    .filter-responsavel {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .filter-responsavel select {
+        flex: 1;
+        max-width: 200px;
+    }
+}
+
+/* Tag Assistência Técnica */
+.tag.assistencia {
+    background: #e3f2fd;
+    color: #1565C0;
+    font-weight: 600;
+}
+
+/* Estatística da assistência */
+#totalTasksAssist {
+    color: #2196F3;
+}
+
+#completedTasksAssist {
+    color: #00a86b;
+}
+
+#pendingTasksAssist {
+    color: #F57C00;
+}
+
+#overdueTasksAssist {
+    color: #ff4d4f;
 }

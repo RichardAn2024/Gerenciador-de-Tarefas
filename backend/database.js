@@ -1,15 +1,12 @@
-// database.js - Configuração do banco de dados MySQL (HOSTINGER)
+// database.js - Configuração MySQL para teste local
 const mysql = require('mysql2');
 require('dotenv').config();
 
-// ============================================================
-//  CONFIGURAÇÃO DO BANCO DE DADOS MYSQL
-// ============================================================
+console.log('📁 Configuração do Banco Local:');
 
-// Verificar se as variáveis de ambiente existem
 const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'mini_user',
+    user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'mini_monday',
     port: process.env.DB_PORT || 3306,
@@ -18,15 +15,11 @@ const dbConfig = {
     queueLimit: 0
 };
 
-console.log('📁 Configuração do Banco:');
 console.log(`   Host: ${dbConfig.host}`);
 console.log(`   Database: ${dbConfig.database}`);
 console.log(`   User: ${dbConfig.user}`);
 
-// Criar pool de conexões
 const pool = mysql.createPool(dbConfig);
-
-// Promise wrapper para usar async/await
 const db = pool.promise();
 
 // ============================================================
@@ -37,7 +30,7 @@ async function inicializarBanco() {
     try {
         console.log('🔄 Inicializando banco de dados...');
 
-        // Testar conexão primeiro
+        // Testar conexão
         const [testResult] = await db.query('SELECT 1+1 as result');
         console.log('✅ Conexão com banco estabelecida!');
 
@@ -110,7 +103,7 @@ async function inicializarBanco() {
     }
 }
 
-// Inicializar banco (sem bloquear o servidor)
+// Inicializar
 inicializarBanco().catch(err => {
     console.error('❌ Falha ao inicializar banco:', err.message);
 });

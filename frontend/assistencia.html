@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Volmanday - Gestão de Tarefas</title>
+    <title>Assistência Técnica - Volmanday</title>
     <link rel="icon" type="image/png" href="images/simbolicon.png" />
     <link rel="stylesheet" href="style.css" />
 </head>
@@ -13,44 +13,41 @@
 
     <div class="app-container">
 
-        <!-- ===== Cabeçalho ===== -->
         <header class="header">
             <div class="logo-area">
                 <div class="logo-icon">
                     <img src="images/simbolicon.png" alt="Volmanday" class="logo-img" />
                 </div>
                 <div class="logo-text">Vol<span>manday</span></div>
+                <span class="admin-badge" style="background: #2196F3;">🔧 Assistência</span>
             </div>
             <div class="header-right">
                 <div class="stats">
                     <div class="stat-item">
-                        <div class="stat-number" id="totalTasks">0</div>
+                        <div class="stat-number" id="totalTasksAssist">0</div>
                         <div class="stat-label">Total</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-number" id="completedTasks">0</div>
+                        <div class="stat-number" id="completedTasksAssist">0</div>
                         <div class="stat-label">Concluídas</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-number" id="pendingTasks">0</div>
+                        <div class="stat-number" id="pendingTasksAssist">0</div>
                         <div class="stat-label">Pendentes</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-number" id="overdueTasks">0</div>
+                        <div class="stat-number" id="overdueTasksAssist">0</div>
                         <div class="stat-label" style="color: #ff4d4f;">Atrasadas</div>
                     </div>
                 </div>
                 <div class="user-info">
                     <span id="userName">Usuário</span>
-                    <a href="assistencia.html" class="btn btn-outline btn-sm">🔧 Assistência</a>
-                    <a href="admin.html" class="btn btn-outline btn-sm" id="adminLink" style="display:none;">👑
-                        Admin</a>
+                    <a href="index.html" class="btn btn-outline btn-sm">📋 Voltar</a>
                     <button class="btn btn-outline btn-sm" id="logoutBtn">🚪 Sair</button>
                 </div>
             </div>
         </header>
 
-        <!-- ===== Barra de Ferramentas ===== -->
         <div class="toolbar">
             <button class="btn btn-primary" id="openCreateBtn">➕ Nova Tarefa</button>
 
@@ -71,7 +68,6 @@
             <button class="btn btn-outline" id="clearAllBtn">🗑️ Limpar tudo</button>
         </div>
 
-        <!-- ===== Board ===== -->
         <div class="board" id="board">
             <div class="column" data-status="todo">
                 <div class="column-header">
@@ -97,24 +93,19 @@
 
     </div>
 
-    <!-- ===== MODAL DE CRIAÇÃO ===== -->
     <div class="modal-overlay" id="createModal">
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h2>➕ Nova Tarefa</h2>
+                <h2>➕ Nova Tarefa - Assistência Técnica</h2>
                 <button class="modal-close" id="closeCreateModalBtn">&times;</button>
             </div>
             <div class="modal-body">
                 <label for="createTitle">Título da tarefa:</label>
                 <input type="text" id="createTitle" placeholder="Digite o título da tarefa..." />
 
-                <label for="createTag">Tag:</label>
+                <label for="createTag">Tipo de Serviço:</label>
                 <select id="createTag">
-                    <option value="">Normal</option>
-                    <option value="assistencia">🔧 Assistência Técnica</option>
-                    <option value="urgent">🔴 Urgente</option>
-                    <option value="important">🟡 Importante</option>
-                    <option value="tranquilo">🔵 Tranquilo</option>
+                    <option value="assistencia" selected>🔧 Assistência Técnica</option>
                 </select>
 
                 <label for="createResponsavel">👤 Responsável:</label>
@@ -138,7 +129,6 @@
         </div>
     </div>
 
-    <!-- ===== MODAL DE EDIÇÃO ===== -->
     <div class="modal-overlay" id="editModal">
         <div class="modal-content modal-large">
             <div class="modal-header">
@@ -149,13 +139,9 @@
                 <label for="editTitle">Título da tarefa:</label>
                 <input type="text" id="editTitle" placeholder="Digite o novo título..." />
 
-                <label for="editTag">Tag:</label>
+                <label for="editTag">Tipo de Serviço:</label>
                 <select id="editTag">
-                    <option value="">Normal</option>
                     <option value="assistencia">🔧 Assistência Técnica</option>
-                    <option value="urgent">🔴 Urgente</option>
-                    <option value="important">🟡 Importante</option>
-                    <option value="tranquilo">🔵 Tranquilo</option>
                 </select>
 
                 <label for="editResponsavel">👤 Responsável:</label>
@@ -179,7 +165,6 @@
         </div>
     </div>
 
-    <!-- ===== MODAL DE CONFIRMAÇÃO ===== -->
     <div class="modal-overlay" id="confirmModal">
         <div class="modal-content modal-small">
             <div class="modal-header">
@@ -197,7 +182,7 @@
     </div>
 
     <script src="auth.js"></script>
-    <script src="script.js"></script>
+    <script src="assistencia.js"></script>
 </body>
 
 </html>

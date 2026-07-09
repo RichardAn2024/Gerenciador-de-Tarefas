@@ -1,13 +1,7 @@
-// auth.js - Comunicação com o back-end
-// ============================================================
-//  CONFIGURAÇÃO DA API
-// ============================================================
+// auth.js - Comunicação com o back-end (VERSÃO LOCAL)
+const API_URL = 'http://localhost:3000/api';
 
-const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:3000/api'
-    : 'https://richardangelo.net/api';
-
-console.log(`🔗 Conectando ao servidor em: ${API_URL}`);
+console.log(`🔗 Conectando ao servidor local: ${API_URL}`);
 
 // ============================================================
 //  FUNÇÕES DE AUTENTICAÇÃO
@@ -183,10 +177,22 @@ async function carregarTarefas() {
     return response.json();
 }
 
-async function criarTarefa(titulo, tag, subtarefas, responsavel_id = null) {
+// ============================================================
+//  FUNÇÃO PARA CARREGAR APENAS TAREFAS DE ASSISTÊNCIA
+// ============================================================
+
+async function carregarTarefasAssistencia() {
+    const response = await apiRequest('/tarefas/assistencia');
+    if (!response.ok) {
+        throw new Error('Erro ao carregar tarefas de assistência');
+    }
+    return response.json();
+}
+
+async function criarTarefa(titulo, tag, subtarefas, responsavel_id = null, prazo = null) {
     const response = await apiRequest('/tarefas', {
         method: 'POST',
-        body: JSON.stringify({ titulo, tag, subtarefas, responsavel_id })
+        body: JSON.stringify({ titulo, tag, subtarefas, responsavel_id, prazo })
     });
     if (!response.ok) {
         const data = await response.json();
@@ -195,10 +201,10 @@ async function criarTarefa(titulo, tag, subtarefas, responsavel_id = null) {
     return response.json();
 }
 
-async function atualizarTarefa(id, titulo, tag, subtarefas, responsavel_id = null) {
+async function atualizarTarefa(id, titulo, tag, subtarefas, responsavel_id = null, prazo = null) {
     const response = await apiRequest(`/tarefas/${id}`, {
         method: 'PUT',
-        body: JSON.stringify({ titulo, tag, subtarefas, responsavel_id })
+        body: JSON.stringify({ titulo, tag, subtarefas, responsavel_id, prazo })
     });
     if (!response.ok) {
         const data = await response.json();
@@ -241,10 +247,6 @@ async function deletarTarefa(id) {
     }
     return response.json();
 }
-
-// ============================================================
-//  FUNÇÃO PARA LISTAR USUÁRIOS (responsáveis)
-// ============================================================
 
 async function listarUsuarios() {
     const response = await apiRequest('/usuarios');
