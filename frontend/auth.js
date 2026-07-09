@@ -1,4 +1,4 @@
-// auth.js - Comunicação com o back-end (VERSÃO HOSTINGER)
+// auth.js - Comunicação com o back-end
 // ============================================================
 //  CONFIGURAÇÃO DA API
 // ============================================================

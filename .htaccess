@@ -1,0 +1,37 @@
+#.htaccess - Configuração principal do site
+
+# Ativar o módulo de reescrita
+RewriteEngine On
+
+# Definir a base para as regras
+RewriteBase /
+
+# 🔥 IMPORTANTE: Redirecionar tudo para o index.html
+#(exceto arquivos existentes e a API)
+RewriteCond % { REQUEST_FILENAME }! - f
+RewriteCond % { REQUEST_FILENAME }! - d
+RewriteRule ^ (.*)$ / index.html[L, QSA]
+
+# 🔥 IMPORTANTE: Permitir acesso à API do Node.js
+# Redirecionar / api/* para o Node.js na porta 3000
+RewriteRule ^api/(.*)$ http://localhost:3000/api/$1 [P,L]
+
+# 🔥 IMPORTANTE: Permitir acesso ao backend
+RewriteRule ^backend/(.*)$ http://localhost:3000/$1 [P,L]
+
+# Configurações de segurança
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Proteger arquivos sensíveis
+<FilesMatch "^(\.env|\.git|\.gitignore|package\.json|package-lock\.json)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Configuração de CORS (se necessário)
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+</IfModule>
