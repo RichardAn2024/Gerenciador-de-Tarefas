@@ -1,4 +1,4 @@
-// auth.js - Funções de autenticação (VERSÃO MYSQL)
+// auth.js - Funções de autenticação (VERSÃO MYSQL - HOSTINGER)
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const db = require('./database');

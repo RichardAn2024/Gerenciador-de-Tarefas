@@ -38,22 +38,31 @@ app.use(cors({
 app.use(express.json());
 
 // ============================================================
-//  ENCONTRAR PASTA DO FRONTEND
+//  ENCONTRAR PASTA DO FRONTEND - VERSÃO HOSTINGER
 // ============================================================
 
 function encontrarFrontend() {
-    // Possíveis caminhos para o frontend
+    // Possíveis caminhos para o frontend na Hostinger
     const possiveisCaminhos = [
-        path.join(__dirname, '../frontend'),      // backend/ e frontend/ no mesmo nível
-        path.join(__dirname, '../../frontend'),    // um nível acima
-        path.join(__dirname, '../public'),         // pasta public
-        path.join(__dirname, '..'),                // raiz do projeto
-        path.join(__dirname, '.'),                 // mesma pasta do backend
-        '/home/vol1_shared/richardangelo.net/htdocs/frontend', // Hostinger
-        '/home/vol1_shared/richardangelo.net/htdocs', // Hostinger
+        // Caminho absoluto da Hostinger (MAIS PROVÁVEL)
+        '/home/u332502777/domains/richardangelo.net/public_html',
+        '/home/u332502777/domains/richardangelo.net/public_html/frontend',
+
+        // Caminhos relativos
+        path.join(__dirname, '../public_html'),
+        path.join(__dirname, '../public_html/frontend'),
+        path.join(__dirname, '../../public_html'),
+        path.join(__dirname, '../../public_html/frontend'),
+
+        // Caminhos alternativos
+        path.join(__dirname, '..'),
+        path.join(__dirname, '../frontend'),
+        path.join(__dirname, '.'),
+        path.join(__dirname, '../../htdocs'),
+        path.join(__dirname, '../htdocs'),
     ];
 
-    // Verificar se o index.html existe em algum caminho
+    console.log('🔍 Procurando frontend em:');
     for (const caminho of possiveisCaminhos) {
         try {
             const indexFile = path.join(caminho, 'index.html');
@@ -66,39 +75,42 @@ function encontrarFrontend() {
         }
     }
 
-    // Se não encontrou, tentar criar uma lista de arquivos na pasta atual
-    console.log('🔍 Arquivos na pasta atual:');
+    // Se não encontrou, listar o que tem na pasta atual
+    console.log('📂 Conteúdo de', __dirname);
     try {
         const files = fs.readdirSync(__dirname);
         console.log(files);
     } catch (err) {
-        console.log('❌ Não foi possível listar arquivos');
+        console.log('Erro ao listar:', err.message);
     }
 
-    // Tentar listar a pasta pai
+    // Listar a pasta pai
+    const parentDir = path.join(__dirname, '..');
+    console.log(`📂 Conteúdo de ${parentDir}:`);
     try {
-        const parentDir = path.join(__dirname, '..');
-        console.log(`🔍 Arquivos na pasta pai (${parentDir}):`);
         const files = fs.readdirSync(parentDir);
         console.log(files);
     } catch (err) {
-        console.log('❌ Não foi possível listar pasta pai');
+        console.log('Erro ao listar:', err.message);
     }
 
-    throw new Error('❌ Pasta do frontend não encontrada!');
-}
+    // Tentar listar domains
+    const domainsDir = '/home/u332502777/domains/richardangelo.net';
+    console.log(`📂 Conteúdo de ${domainsDir}:`);
+    try {
+        const files = fs.readdirSync(domainsDir);
+        console.log(files);
+    } catch (err) {
+        console.log('Erro ao listar:', err.message);
+    }
 
-// Tentar encontrar o frontend
-let frontendPath;
-try {
-    frontendPath = encontrarFrontend();
-} catch (error) {
-    console.error('❌ Erro:', error.message);
     // Fallback: usar a pasta atual
-    frontendPath = __dirname;
-    console.log(`⚠️ Usando fallback: ${frontendPath}`);
+    console.log('⚠️ Usando fallback: pasta atual');
+    return __dirname;
 }
 
+// Encontrar o frontend
+const frontendPath = encontrarFrontend();
 console.log(`📂 Servindo frontend de: ${frontendPath}`);
 
 // ============================================================
@@ -118,6 +130,8 @@ app.get('/', (req, res) => {
             <h1>404 - Página não encontrada</h1>
             <p>O arquivo index.html não foi encontrado em: ${frontendPath}</p>
             <p>Verifique a estrutura de pastas do seu projeto.</p>
+            <p>Caminho atual do servidor: ${__dirname}</p>
+            <p>Conteúdo da pasta: ${fs.readdirSync(__dirname).join(', ')}</p>
         `);
     }
 });
@@ -162,7 +176,8 @@ app.get('/api/health', (req, res) => {
         mensagem: 'Servidor rodando!',
         ambiente: NODE_ENV,
         jwt_configurado: JWT_SECRET !== 'fallback-secret-nao-use-em-producao',
-        frontendPath: frontendPath
+        frontendPath: frontendPath,
+        cwd: __dirname
     });
 });
 
@@ -449,8 +464,8 @@ app.get('*', (req, res) => {
             <h1>404 - Página não encontrada</h1>
             <p>O arquivo index.html não foi encontrado em: ${frontendPath}</p>
             <p>Verifique a estrutura de pastas do seu projeto.</p>
-            <p>Caminho atual: ${__dirname}</p>
-            <p>Pasta pai: ${path.join(__dirname, '..')}</p>
+            <p>Caminho atual do servidor: ${__dirname}</p>
+            <p>Conteúdo da pasta: ${fs.readdirSync(__dirname).join(', ')}</p>
         `);
     }
 });
@@ -461,7 +476,7 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Servidor rodando na porta ${PORT}`);
-    console.log(`📋 API disponível em https://richardangelo.net/backend/api/health`);
+    console.log(`📋 API disponível em https://richardangelo.net/api/health`);
     console.log(`🌐 Ambiente: ${NODE_ENV}`);
     console.log(`📂 Servindo frontend de: ${frontendPath}`);
     console.log(`📄 Index.html existe: ${fs.existsSync(path.join(frontendPath, 'index.html'))}`);

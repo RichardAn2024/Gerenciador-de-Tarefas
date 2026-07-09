@@ -1,4 +1,4 @@
-// database.js - Configuração do banco de dados MySQL
+// database.js - Configuração do banco de dados MySQL (HOSTINGER)
 const mysql = require('mysql2');
 require('dotenv').config();
 
@@ -9,7 +9,7 @@ require('dotenv').config();
 // Verificar se as variáveis de ambiente existem
 const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
+    user: process.env.DB_USER || 'mini_user',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'mini_monday',
     port: process.env.DB_PORT || 3306,
@@ -106,7 +106,6 @@ async function inicializarBanco() {
     } catch (error) {
         console.error('❌ Erro ao inicializar banco:', error.message);
         console.error('❌ Detalhes:', error);
-        // Não derrubar o servidor, apenas logar o erro
         return false;
     }
 }
