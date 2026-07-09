@@ -6,8 +6,8 @@ require('dotenv').config();
 //  CONFIGURAÇÃO DO BANCO DE DADOS MYSQL
 // ============================================================
 
-// Criar pool de conexões
-const pool = mysql.createPool({
+// Verificar se as variáveis de ambiente existem
+const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
@@ -16,12 +16,18 @@ const pool = mysql.createPool({
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
-});
+};
+
+console.log('📁 Configuração do Banco:');
+console.log(`   Host: ${dbConfig.host}`);
+console.log(`   Database: ${dbConfig.database}`);
+console.log(`   User: ${dbConfig.user}`);
+
+// Criar pool de conexões
+const pool = mysql.createPool(dbConfig);
 
 // Promise wrapper para usar async/await
 const db = pool.promise();
-
-console.log(`📁 Conectando ao MySQL: ${process.env.DB_HOST || 'localhost'}/${process.env.DB_NAME || 'mini_monday'}`);
 
 // ============================================================
 //  INICIALIZAR TABELAS
@@ -29,6 +35,12 @@ console.log(`📁 Conectando ao MySQL: ${process.env.DB_HOST || 'localhost'}/${p
 
 async function inicializarBanco() {
     try {
+        console.log('🔄 Inicializando banco de dados...');
+
+        // Testar conexão primeiro
+        const [testResult] = await db.query('SELECT 1+1 as result');
+        console.log('✅ Conexão com banco estabelecida!');
+
         // 1. Tabela de usuários
         await db.query(`
             CREATE TABLE IF NOT EXISTS usuarios (
@@ -89,14 +101,19 @@ async function inicializarBanco() {
             console.log('✅ Admin já existe:', rows[0].email);
         }
 
-        console.log('✅ Banco de dados MySQL inicializado!');
+        console.log('✅ Banco de dados MySQL inicializado com sucesso!');
+        return true;
     } catch (error) {
-        console.error('❌ Erro ao inicializar banco:', error);
-        throw error;
+        console.error('❌ Erro ao inicializar banco:', error.message);
+        console.error('❌ Detalhes:', error);
+        // Não derrubar o servidor, apenas logar o erro
+        return false;
     }
 }
 
-// Inicializar banco
-inicializarBanco();
+// Inicializar banco (sem bloquear o servidor)
+inicializarBanco().catch(err => {
+    console.error('❌ Falha ao inicializar banco:', err.message);
+});
 
 module.exports = db;

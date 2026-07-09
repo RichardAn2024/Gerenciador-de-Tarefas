@@ -1,255 +1,185 @@
-// auth.js - Comunicação com o back-end (VERSÃO HOSTINGER)
+// auth.js - Funções de autenticação (VERSÃO MYSQL)
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const db = require('./database');
+require('dotenv').config();
+
 // ============================================================
-//  CONFIGURAÇÃO DA API
+//  CHAVE SECRETA DO JWT
 // ============================================================
 
-const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:3000/api'
-    : 'https://richardangelo.net/backend/api';
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-nao-use-em-producao';
 
-console.log(`🔗 Conectando ao servidor em: ${API_URL}`);
+console.log('🔐 Auth inicializado');
 
 // ============================================================
 //  FUNÇÕES DE AUTENTICAÇÃO
 // ============================================================
 
-function mostrarErro(mensagem) {
-    const erroEl = document.getElementById('mensagemErro');
-    if (erroEl) {
-        erroEl.textContent = mensagem;
-        erroEl.style.display = 'block';
-    } else {
-        alert(mensagem);
-    }
+function gerarToken(usuarioId, email, isAdmin = 0) {
+    return jwt.sign(
+        { id: usuarioId, email: email, isAdmin: isAdmin },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+    );
 }
 
-function ocultarErro() {
-    const erroEl = document.getElementById('mensagemErro');
-    if (erroEl) {
-        erroEl.style.display = 'none';
-    }
-}
-
-// ============================================================
-//  CADASTRO
-// ============================================================
-
-document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('cadastroForm');
-    if (form) {
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            ocultarErro();
-
-            const nome = document.getElementById('cadastroNome').value.trim();
-            const email = document.getElementById('cadastroEmail').value.trim();
-            const senha = document.getElementById('cadastroSenha').value;
-            const confirmarSenha = document.getElementById('cadastroConfirmarSenha').value;
-
-            if (senha !== confirmarSenha) {
-                mostrarErro('As senhas não coincidem.');
-                return;
-            }
-
-            if (senha.length < 6) {
-                mostrarErro('A senha deve ter pelo menos 6 caracteres.');
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_URL}/cadastro`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nome, email, senha })
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('usuario', JSON.stringify(data.usuario));
-                    window.location.href = 'index.html';
-                } else {
-                    mostrarErro(data.erro || 'Erro ao cadastrar.');
-                }
-            } catch (error) {
-                console.error('❌ Erro no cadastro:', error);
-                mostrarErro('Erro de conexão com o servidor. Verifique se o servidor está rodando.');
-            }
-        });
-    }
-});
-
-// ============================================================
-//  LOGIN
-// ============================================================
-
-document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('loginForm');
-    if (form) {
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            ocultarErro();
-
-            const email = document.getElementById('loginEmail').value.trim();
-            const senha = document.getElementById('loginPassword').value;
-
-            try {
-                const response = await fetch(`${API_URL}/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, senha })
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('usuario', JSON.stringify(data.usuario));
-                    window.location.href = 'index.html';
-                } else {
-                    mostrarErro(data.erro || 'Email ou senha incorretos.');
-                }
-            } catch (error) {
-                console.error('❌ Erro no login:', error);
-                mostrarErro('Erro de conexão com o servidor. Verifique se o servidor está rodando.');
-            }
-        });
-    }
-});
-
-// ============================================================
-//  FUNÇÕES DE AUTENTICAÇÃO (GLOBAIS)
-// ============================================================
-
-function getToken() {
-    return localStorage.getItem('token');
-}
-
-function getUsuario() {
-    const usuario = localStorage.getItem('usuario');
-    return usuario ? JSON.parse(usuario) : null;
-}
-
-function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('usuario');
-    window.location.href = 'login.html';
-}
-
-function verificarAutenticacao() {
-    const token = getToken();
-    if (!token) {
-        window.location.href = 'login.html';
+function verificarToken(token) {
+    try {
+        return jwt.verify(token, JWT_SECRET);
+    } catch (error) {
         return null;
     }
-    return token;
+}
+
+// Middleware para verificar token
+function autenticar(req, res, next) {
+    const token = req.headers['authorization']?.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ erro: 'Token não fornecido' });
+    }
+
+    const decoded = verificarToken(token);
+    if (!decoded) {
+        return res.status(401).json({ erro: 'Token inválido ou expirado' });
+    }
+
+    req.usuarioId = decoded.id;
+    req.usuarioEmail = decoded.email;
+    req.isAdmin = decoded.isAdmin || 0;
+    next();
+}
+
+// Middleware para verificar se é admin
+function adminApenas(req, res, next) {
+    if (req.isAdmin !== 1) {
+        return res.status(403).json({ erro: 'Acesso negado. Apenas administradores podem acessar.' });
+    }
+    next();
 }
 
 // ============================================================
-//  FUNÇÕES DA API (GLOBAIS)
+//  FUNÇÕES DE USUÁRIO
 // ============================================================
 
-async function apiRequest(endpoint, options = {}) {
-    const token = getToken();
-    const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        ...options.headers
-    };
+async function cadastrarUsuario(nome, email, senha) {
+    try {
+        // Verificar se email já existe
+        const [rows] = await db.query('SELECT id FROM usuarios WHERE email = ?', [email]);
 
-    const response = await fetch(`${API_URL}${endpoint}`, {
-        ...options,
-        headers
-    });
+        if (rows.length > 0) {
+            throw new Error('Email já cadastrado');
+        }
 
-    if (response.status === 401) {
-        logout();
-        throw new Error('Sessão expirada. Faça login novamente.');
+        const salt = bcrypt.genSaltSync(10);
+        const senhaHash = bcrypt.hashSync(senha, salt);
+
+        const [result] = await db.query(
+            'INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)',
+            [nome, email, senhaHash]
+        );
+
+        return {
+            id: result.insertId,
+            nome: nome,
+            email: email,
+            isAdmin: 0
+        };
+    } catch (error) {
+        throw error;
     }
-
-    return response;
 }
 
-// ============================================================
-//  FUNÇÕES DE TAREFAS (GLOBAIS)
-// ============================================================
+async function loginUsuario(email, senha) {
+    try {
+        const [rows] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
 
-async function carregarTarefas() {
-    const response = await apiRequest('/tarefas');
-    if (!response.ok) {
-        throw new Error('Erro ao carregar tarefas');
-    }
-    return response.json();
-}
+        if (rows.length === 0) {
+            throw new Error('Email ou senha incorretos');
+        }
 
-async function criarTarefa(titulo, tag, subtarefas, responsavel_id = null) {
-    const response = await apiRequest('/tarefas', {
-        method: 'POST',
-        body: JSON.stringify({ titulo, tag, subtarefas, responsavel_id })
-    });
-    if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.erro || 'Erro ao criar tarefa');
-    }
-    return response.json();
-}
+        const usuario = rows[0];
+        const senhaValida = bcrypt.compareSync(senha, usuario.senha);
 
-async function atualizarTarefa(id, titulo, tag, subtarefas, responsavel_id = null) {
-    const response = await apiRequest(`/tarefas/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ titulo, tag, subtarefas, responsavel_id })
-    });
-    if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.erro || 'Erro ao atualizar tarefa');
-    }
-    return response.json();
-}
+        if (!senhaValida) {
+            throw new Error('Email ou senha incorretos');
+        }
 
-async function atualizarStatusTarefa(id, status) {
-    const response = await apiRequest(`/tarefas/${id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status })
-    });
-    if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.erro || 'Erro ao atualizar status');
-    }
-    return response.json();
-}
+        const token = gerarToken(usuario.id, usuario.email, usuario.is_admin);
 
-async function alternarSubtarefa(id, concluida) {
-    const response = await apiRequest(`/subtarefas/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ concluida })
-    });
-    if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.erro || 'Erro ao atualizar subtarefa');
+        return {
+            token: token,
+            usuario: {
+                id: usuario.id,
+                nome: usuario.nome,
+                email: usuario.email,
+                isAdmin: usuario.is_admin || 0
+            }
+        };
+    } catch (error) {
+        throw error;
     }
-    return response.json();
-}
-
-async function deletarTarefa(id) {
-    const response = await apiRequest(`/tarefas/${id}`, {
-        method: 'DELETE'
-    });
-    if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.erro || 'Erro ao deletar tarefa');
-    }
-    return response.json();
 }
 
 // ============================================================
-//  FUNÇÃO PARA LISTAR USUÁRIOS (responsáveis)
+//  FUNÇÕES DE ADMIN
 // ============================================================
 
 async function listarUsuarios() {
-    const response = await apiRequest('/usuarios');
-    if (!response.ok) {
-        throw new Error('Erro ao carregar usuários');
+    try {
+        const [rows] = await db.query(`
+            SELECT id, nome, email, is_admin, criado_em,
+                   (SELECT COUNT(*) FROM tarefas WHERE usuario_id = usuarios.id) as total_tarefas
+            FROM usuarios
+            ORDER BY criado_em DESC
+        `);
+        return rows;
+    } catch (error) {
+        throw error;
     }
-    return response.json();
 }
+
+async function deletarUsuario(id) {
+    try {
+        // Verificar se é admin
+        const [rows] = await db.query('SELECT is_admin FROM usuarios WHERE id = ?', [id]);
+
+        if (rows.length > 0 && rows[0].is_admin === 1) {
+            throw new Error('Não é possível deletar o administrador principal');
+        }
+
+        await db.query('DELETE FROM usuarios WHERE id = ?', [id]);
+        return { deletado: true, id: id };
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function obterEstatisticas() {
+    try {
+        const [rows] = await db.query(`
+            SELECT 
+                (SELECT COUNT(*) FROM usuarios) as total_usuarios,
+                (SELECT COUNT(*) FROM tarefas) as total_tarefas,
+                (SELECT COUNT(*) FROM subtarefas) as total_subtarefas,
+                (SELECT COUNT(*) FROM tarefas WHERE status = 'done') as tarefas_concluidas,
+                (SELECT COUNT(*) FROM subtarefas WHERE concluida = 1) as subtarefas_concluidas
+        `);
+        return rows[0];
+    } catch (error) {
+        throw error;
+    }
+}
+
+module.exports = {
+    autenticar,
+    adminApenas,
+    cadastrarUsuario,
+    loginUsuario,
+    gerarToken,
+    verificarToken,
+    listarUsuarios,
+    deletarUsuario,
+    obterEstatisticas
+};

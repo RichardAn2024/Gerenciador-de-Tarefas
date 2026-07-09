@@ -37,17 +37,6 @@ app.use(cors({
 app.use(express.json());
 
 // ============================================================
-//  LOGS (apenas em desenvolvimento)
-// ============================================================
-
-if (NODE_ENV !== 'production') {
-    app.use((req, res, next) => {
-        console.log(`📨 ${req.method} ${req.url}`);
-        next();
-    });
-}
-
-// ============================================================
 //  ROTAS PÚBLICAS DA API
 // ============================================================
 
@@ -114,7 +103,7 @@ app.post('/api/login', async (req, res) => {
 });
 
 // ============================================================
-//  ROTA PARA LISTAR USUÁRIOS (responsáveis)
+//  ROTA PARA LISTAR USUÁRIOS
 // ============================================================
 
 app.get('/api/usuarios', auth.autenticar, async (req, res) => {
@@ -339,6 +328,15 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`📋 API disponível em https://richardangelo.net/backend/api/health`);
     console.log(`🌐 Ambiente: ${NODE_ENV}`);
     console.log(`🔒 JWT Secret: ${JWT_SECRET !== 'fallback-secret-nao-use-em-producao' ? '✅ Configurada' : '⚠️ Usando padrão (NÃO RECOMENDADO)'}`);
+});
+
+// Tratamento de erros não capturados
+process.on('uncaughtException', (err) => {
+    console.error('❌ Erro não capturado:', err);
+});
+
+process.on('unhandledRejection', (err) => {
+    console.error('❌ Promessa rejeitada:', err);
 });
 
 console.log('✅ Servidor iniciado com sucesso!');
