@@ -1,4 +1,4 @@
-// server.js - Servidor principal (VERSÃO MYSQL)
+// server.js - Servidor principal (VERSÃO HOSTINGER)
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -13,9 +13,9 @@ const app = express();
 // ============================================================
 
 const PORT = process.env.PORT || 3000;
-const FRONTEND_URL = process.env.FRONTEND_URL || '*';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://richardangelo.net';
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-nao-use-em-producao';
-const NODE_ENV = process.env.NODE_ENV || 'development';
+const NODE_ENV = process.env.NODE_ENV || 'production';
 
 console.log('🔧 Configurações:');
 console.log(`   Porta: ${PORT}`);
@@ -46,33 +46,6 @@ if (NODE_ENV !== 'production') {
         next();
     });
 }
-
-// ============================================================
-//  SERVIDOR DE ARQUIVOS ESTÁTICOS (Frontend)
-// ============================================================
-
-// Serve os arquivos do frontend (HTML, CSS, JS)
-app.use(express.static(path.join(__dirname, '../frontend')));
-
-// Rota para a página inicial (index.html)
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend', 'index.html'));
-});
-
-// Rota para login
-app.get('/login.html', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend', 'login.html'));
-});
-
-// Rota para cadastro
-app.get('/cadastro.html', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend', 'cadastro.html'));
-});
-
-// Rota para admin
-app.get('/admin.html', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend', 'admin.html'));
-});
 
 // ============================================================
 //  ROTAS PÚBLICAS DA API
@@ -141,7 +114,7 @@ app.post('/api/login', async (req, res) => {
 });
 
 // ============================================================
-//  ROTA PARA LISTAR USUÁRIOS (responsáveis) - VERSÃO MYSQL
+//  ROTA PARA LISTAR USUÁRIOS (responsáveis)
 // ============================================================
 
 app.get('/api/usuarios', auth.autenticar, async (req, res) => {
@@ -159,10 +132,10 @@ app.get('/api/usuarios', auth.autenticar, async (req, res) => {
 });
 
 // ============================================================
-//  ROTAS PROTEGIDAS (TAREFAS) - VERSÃO MYSQL
+//  ROTAS PROTEGIDAS (TAREFAS)
 // ============================================================
 
-// Buscar TODAS as tarefas (todos os usuários veem todas as tarefas)
+// Buscar TODAS as tarefas
 app.get('/api/tarefas', auth.autenticar, async (req, res) => {
     try {
         console.log(`📋 Buscando todas as tarefas (compartilhadas)`);
@@ -181,7 +154,6 @@ app.get('/api/tarefas', auth.autenticar, async (req, res) => {
 
         console.log(`✅ ${tarefas.length} tarefas encontradas`);
 
-        // Buscar subtarefas para cada tarefa
         for (let tarefa of tarefas) {
             const [subtarefas] = await db.query(
                 'SELECT * FROM subtarefas WHERE tarefa_id = ?',
@@ -197,7 +169,7 @@ app.get('/api/tarefas', auth.autenticar, async (req, res) => {
     }
 });
 
-// Criar nova tarefa (visível para todos)
+// Criar nova tarefa
 app.post('/api/tarefas', auth.autenticar, async (req, res) => {
     try {
         const usuarioId = req.usuarioId;
@@ -217,7 +189,6 @@ app.post('/api/tarefas', auth.autenticar, async (req, res) => {
         const tarefaId = result.insertId;
         console.log(`✅ Tarefa criada com ID: ${tarefaId}`);
 
-        // Inserir subtarefas
         if (subtarefas && subtarefas.length > 0) {
             for (let sub of subtarefas) {
                 await db.query(
@@ -237,7 +208,7 @@ app.post('/api/tarefas', auth.autenticar, async (req, res) => {
     }
 });
 
-// Atualizar tarefa (qualquer usuário pode editar qualquer tarefa)
+// Atualizar tarefa
 app.put('/api/tarefas/:id', auth.autenticar, async (req, res) => {
     try {
         const tarefaId = req.params.id;
@@ -250,10 +221,8 @@ app.put('/api/tarefas/:id', auth.autenticar, async (req, res) => {
             [titulo, tag || '', responsavel_id || null, tarefaId]
         );
 
-        // Deletar subtarefas antigas
         await db.query('DELETE FROM subtarefas WHERE tarefa_id = ?', [tarefaId]);
 
-        // Inserir novas subtarefas
         if (subtarefas && subtarefas.length > 0) {
             for (let sub of subtarefas) {
                 await db.query(
@@ -270,7 +239,7 @@ app.put('/api/tarefas/:id', auth.autenticar, async (req, res) => {
     }
 });
 
-// Atualizar status da tarefa (qualquer usuário pode alterar status)
+// Atualizar status da tarefa
 app.patch('/api/tarefas/:id/status', auth.autenticar, async (req, res) => {
     try {
         const tarefaId = req.params.id;
@@ -291,7 +260,7 @@ app.patch('/api/tarefas/:id/status', auth.autenticar, async (req, res) => {
     }
 });
 
-// Alternar subtarefa (qualquer usuário pode alternar)
+// Alternar subtarefa
 app.patch('/api/subtarefas/:id', auth.autenticar, async (req, res) => {
     try {
         const subtarefaId = req.params.id;
@@ -312,7 +281,7 @@ app.patch('/api/subtarefas/:id', auth.autenticar, async (req, res) => {
     }
 });
 
-// Deletar tarefa (qualquer usuário pode deletar qualquer tarefa)
+// Deletar tarefa
 app.delete('/api/tarefas/:id', auth.autenticar, async (req, res) => {
     try {
         const tarefaId = req.params.id;
@@ -362,15 +331,14 @@ app.get('/api/admin/estatisticas', auth.autenticar, auth.adminApenas, async (req
 });
 
 // ============================================================
-//  INICIAR SERVIDOR - VERSÃO DIGITALOCEAN
+//  INICIAR SERVIDOR
 // ============================================================
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Servidor rodando na porta ${PORT}`);
-    console.log(`📋 API disponível em http://localhost:${PORT}/api/health`);
+    console.log(`📋 API disponível em https://richardangelo.net/backend/api/health`);
     console.log(`🌐 Ambiente: ${NODE_ENV}`);
     console.log(`🔒 JWT Secret: ${JWT_SECRET !== 'fallback-secret-nao-use-em-producao' ? '✅ Configurada' : '⚠️ Usando padrão (NÃO RECOMENDADO)'}`);
-    console.log(`📂 Servindo frontend de: ${path.join(__dirname, '../frontend')}`);
 });
 
 console.log('✅ Servidor iniciado com sucesso!');
