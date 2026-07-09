@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (error) {
                 console.error('❌ Erro no cadastro:', error);
-                mostrarErro('Erro de conexão com o servidor. Verifique se o servidor está rodando.');
+                mostrarErro('Erro de conexão com o servidor.');
             }
         });
     }
@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (error) {
                 console.error('❌ Erro no login:', error);
-                mostrarErro('Erro de conexão com o servidor. Verifique se o servidor está rodando.');
+                mostrarErro('Erro de conexão com o servidor.');
             }
         });
     }

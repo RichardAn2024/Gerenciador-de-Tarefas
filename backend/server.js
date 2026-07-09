@@ -44,25 +44,23 @@ app.use(express.json());
 function encontrarFrontend() {
     // Possíveis caminhos para o frontend na Hostinger
     const possiveisCaminhos = [
-        // Caminho absoluto da Hostinger (MAIS PROVÁVEL)
+        // Caminho mais provável - frontend dentro do nodejs
+        path.join(__dirname, 'frontend'),
+
+        // Caminho absoluto da Hostinger
+        '/home/u332502777/domains/richardangelo.net/nodejs/frontend',
         '/home/u332502777/domains/richardangelo.net/public_html',
         '/home/u332502777/domains/richardangelo.net/public_html/frontend',
 
         // Caminhos relativos
+        path.join(__dirname, '../frontend'),
         path.join(__dirname, '../public_html'),
         path.join(__dirname, '../public_html/frontend'),
-        path.join(__dirname, '../../public_html'),
-        path.join(__dirname, '../../public_html/frontend'),
-
-        // Caminhos alternativos
         path.join(__dirname, '..'),
-        path.join(__dirname, '../frontend'),
         path.join(__dirname, '.'),
-        path.join(__dirname, '../../htdocs'),
-        path.join(__dirname, '../htdocs'),
     ];
 
-    console.log('🔍 Procurando frontend em:');
+    console.log('🔍 Procurando frontend...');
     for (const caminho of possiveisCaminhos) {
         try {
             const indexFile = path.join(caminho, 'index.html');
@@ -84,29 +82,33 @@ function encontrarFrontend() {
         console.log('Erro ao listar:', err.message);
     }
 
-    // Listar a pasta pai
-    const parentDir = path.join(__dirname, '..');
-    console.log(`📂 Conteúdo de ${parentDir}:`);
+    // Fallback: criar a pasta frontend se não existir
+    const fallbackPath = path.join(__dirname, 'frontend');
+    console.log(`⚠️ Criando fallback em: ${fallbackPath}`);
     try {
-        const files = fs.readdirSync(parentDir);
-        console.log(files);
+        if (!fs.existsSync(fallbackPath)) {
+            fs.mkdirSync(fallbackPath, { recursive: true });
+        }
+        // Criar um index.html de fallback
+        const fallbackIndex = path.join(fallbackPath, 'index.html');
+        if (!fs.existsSync(fallbackIndex)) {
+            fs.writeFileSync(fallbackIndex, `
+<!DOCTYPE html>
+<html>
+<head><title>Mini Monday</title></head>
+<body>
+    <h1>Mini Monday</h1>
+    <p>Servidor rodando! Faça upload dos arquivos do frontend para a pasta: ${fallbackPath}</p>
+    <p><a href="/api/health">Health Check</a></p>
+</body>
+</html>
+            `);
+        }
+        return fallbackPath;
     } catch (err) {
-        console.log('Erro ao listar:', err.message);
+        console.error('Erro ao criar fallback:', err);
+        return __dirname;
     }
-
-    // Tentar listar domains
-    const domainsDir = '/home/u332502777/domains/richardangelo.net';
-    console.log(`📂 Conteúdo de ${domainsDir}:`);
-    try {
-        const files = fs.readdirSync(domainsDir);
-        console.log(files);
-    } catch (err) {
-        console.log('Erro ao listar:', err.message);
-    }
-
-    // Fallback: usar a pasta atual
-    console.log('⚠️ Usando fallback: pasta atual');
-    return __dirname;
 }
 
 // Encontrar o frontend
@@ -129,9 +131,8 @@ app.get('/', (req, res) => {
         res.status(404).send(`
             <h1>404 - Página não encontrada</h1>
             <p>O arquivo index.html não foi encontrado em: ${frontendPath}</p>
-            <p>Verifique a estrutura de pastas do seu projeto.</p>
-            <p>Caminho atual do servidor: ${__dirname}</p>
-            <p>Conteúdo da pasta: ${fs.readdirSync(__dirname).join(', ')}</p>
+            <p>Por favor, faça upload dos arquivos do frontend para esta pasta.</p>
+            <p><a href="/api/health">Verificar status do servidor</a></p>
         `);
     }
 });
@@ -463,8 +464,10 @@ app.get('*', (req, res) => {
         res.status(404).send(`
             <h1>404 - Página não encontrada</h1>
             <p>O arquivo index.html não foi encontrado em: ${frontendPath}</p>
-            <p>Verifique a estrutura de pastas do seu projeto.</p>
-            <p>Caminho atual do servidor: ${__dirname}</p>
+            <p>Por favor, faça upload dos arquivos do frontend para esta pasta.</p>
+            <p><a href="/api/health">Verificar status do servidor</a></p>
+            <hr>
+            <p>Caminho atual: ${__dirname}</p>
             <p>Conteúdo da pasta: ${fs.readdirSync(__dirname).join(', ')}</p>
         `);
     }
@@ -479,7 +482,6 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`📋 API disponível em https://richardangelo.net/api/health`);
     console.log(`🌐 Ambiente: ${NODE_ENV}`);
     console.log(`📂 Servindo frontend de: ${frontendPath}`);
-    console.log(`📄 Index.html existe: ${fs.existsSync(path.join(frontendPath, 'index.html'))}`);
 });
 
 // Tratamento de erros não capturados
