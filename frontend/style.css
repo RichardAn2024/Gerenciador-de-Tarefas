@@ -704,7 +704,7 @@ body {
    PÁGINAS DE AUTENTICAÇÃO - COM IMAGEM PERSONALIZADA
    ============================================================ */
 .auth-page {
-    background: url('../images/fundopage.jpg') no-repeat center center fixed;
+    background: url('https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.us-east-2.amazonaws.com%2Fuploads%2Farticles%2F2j2aslxwtdi7f3ax7i0o.jpg') no-repeat center center fixed;
     background-size: cover;
     display: flex;
     justify-content: center;
@@ -722,7 +722,8 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.5);
+    /* Aumentei a opacidade do overlay */
     z-index: 0;
 }
 
