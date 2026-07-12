@@ -1,4 +1,4 @@
-// server.js - Versão COMPLETA COM ASSISTÊNCIA TÉCNICA
+// server.js - Versão com SISTEMA DE APROVAÇÃO DE USUÁRIOS
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -32,7 +32,8 @@ const ADMIN_USER = {
     nome: 'Administrador',
     email: 'admin@admin.com',
     senha: 'admin123',
-    isAdmin: true
+    isAdmin: true,
+    status: 'aprovado'
 };
 
 let usuarios = [ADMIN_USER];
@@ -43,6 +44,7 @@ let subtarefaIdCounter = 1;
 //  ROTAS DE AUTENTICAÇÃO
 // ============================================================
 
+// Login - VERIFICA SE USUÁRIO FOI APROVADO
 app.post('/api/login', (req, res) => {
     try {
         const { email, senha } = req.body;
@@ -58,12 +60,24 @@ app.post('/api/login', (req, res) => {
             return res.status(401).json({ erro: 'Email ou senha incorretos' });
         }
 
+        // VERIFICAR SE O USUÁRIO FOI APROVADO
+        if (usuario.status === 'pendente') {
+            return res.status(401).json({
+                erro: 'Aguardando aprovação do administrador. Você receberá um email quando for aprovado.'
+            });
+        }
+
+        if (usuario.status === 'rejeitado') {
+            return res.status(401).json({
+                erro: 'Seu cadastro foi rejeitado pelo administrador. Entre em contato para mais informações.'
+            });
+        }
+
         if (usuario.senha !== senha) {
             return res.status(401).json({ erro: 'Email ou senha incorretos' });
         }
 
         console.log(`✅ Login bem-sucedido: ${email}`);
-
         res.json({
             mensagem: 'Login bem-sucedido!',
             token: 'fake-token-' + Date.now(),
@@ -71,7 +85,8 @@ app.post('/api/login', (req, res) => {
                 id: usuario.id,
                 nome: usuario.nome,
                 email: usuario.email,
-                isAdmin: usuario.isAdmin || false
+                isAdmin: usuario.isAdmin || false,
+                status: usuario.status
             }
         });
     } catch (error) {
@@ -80,6 +95,7 @@ app.post('/api/login', (req, res) => {
     }
 });
 
+// Cadastro - USUÁRIO FICA PENDENTE
 app.post('/api/cadastro', (req, res) => {
     try {
         const { nome, email, senha } = req.body;
@@ -102,21 +118,17 @@ app.post('/api/cadastro', (req, res) => {
             nome: nome,
             email: email,
             senha: senha,
-            isAdmin: false
+            isAdmin: false,
+            status: 'pendente',
+            data_cadastro: new Date().toISOString()
         };
 
         usuarios.push(novoUsuario);
-        console.log(`✅ Usuário cadastrado: ${email}`);
+        console.log(`📝 Novo cadastro PENDENTE: ${email} (ID: ${novoUsuario.id})`);
 
         res.json({
-            mensagem: 'Usuário cadastrado com sucesso!',
-            token: 'fake-token-' + Date.now(),
-            usuario: {
-                id: novoUsuario.id,
-                nome: novoUsuario.nome,
-                email: novoUsuario.email,
-                isAdmin: novoUsuario.isAdmin
-            }
+            mensagem: 'Cadastro realizado com sucesso! Aguarde a aprovação do administrador.',
+            pendente: true
         });
     } catch (error) {
         console.error('❌ Erro no cadastro:', error);
@@ -125,15 +137,18 @@ app.post('/api/cadastro', (req, res) => {
 });
 
 // ============================================================
-//  ROTA DE USUÁRIOS
+//  ROTAS DE USUÁRIOS
 // ============================================================
 
+// Listar todos os usuários (para admin)
 app.get('/api/usuarios', (req, res) => {
     try {
         const usuariosList = usuarios.map(u => ({
             id: u.id,
             nome: u.nome,
-            email: u.email
+            email: u.email,
+            status: u.status || 'aprovado',
+            isAdmin: u.isAdmin || false
         }));
         res.json(usuariosList);
     } catch (error) {
@@ -143,13 +158,111 @@ app.get('/api/usuarios', (req, res) => {
 });
 
 // ============================================================
-//  ROTAS DE TAREFAS - PRINCIPAL
+//  ROTAS DE ADMIN - GERENCIAR USUÁRIOS
+// ============================================================
+
+// Listar todos os usuários com detalhes para admin
+app.get('/api/admin/usuarios', (req, res) => {
+    try {
+        const usuariosList = usuarios.map(u => ({
+            id: u.id,
+            nome: u.nome,
+            email: u.email,
+            is_admin: u.isAdmin ? 1 : 0,
+            status: u.status || 'aprovado',
+            total_tarefas: tarefas.filter(t => t.responsavel_id === u.id || t.usuario_id === u.id).length,
+            criado_em: u.data_cadastro || new Date().toISOString()
+        }));
+        res.json(usuariosList);
+    } catch (error) {
+        console.error('❌ Erro ao listar usuários:', error);
+        res.status(500).json({ erro: 'Erro ao carregar usuários' });
+    }
+});
+
+// APROVAR USUÁRIO
+app.patch('/api/admin/usuarios/:id/aprovar', (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const usuario = usuarios.find(u => u.id === id);
+
+        if (!usuario) {
+            return res.status(404).json({ erro: 'Usuário não encontrado' });
+        }
+
+        if (usuario.isAdmin) {
+            return res.status(403).json({ erro: 'Administradores não precisam de aprovação' });
+        }
+
+        usuario.status = 'aprovado';
+        console.log(`✅ Usuário ${usuario.email} foi APROVADO!`);
+        res.json({
+            mensagem: `Usuário ${usuario.nome} aprovado com sucesso!`,
+            usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email, status: usuario.status }
+        });
+    } catch (error) {
+        console.error('❌ Erro ao aprovar usuário:', error);
+        res.status(500).json({ erro: 'Erro ao aprovar usuário' });
+    }
+});
+
+// REJEITAR USUÁRIO
+app.patch('/api/admin/usuarios/:id/rejeitar', (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const usuario = usuarios.find(u => u.id === id);
+
+        if (!usuario) {
+            return res.status(404).json({ erro: 'Usuário não encontrado' });
+        }
+
+        if (usuario.isAdmin) {
+            return res.status(403).json({ erro: 'Não é possível rejeitar um administrador' });
+        }
+
+        usuario.status = 'rejeitado';
+        console.log(`❌ Usuário ${usuario.email} foi REJEITADO!`);
+        res.json({
+            mensagem: `Usuário ${usuario.nome} rejeitado.`,
+            usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email, status: usuario.status }
+        });
+    } catch (error) {
+        console.error('❌ Erro ao rejeitar usuário:', error);
+        res.status(500).json({ erro: 'Erro ao rejeitar usuário' });
+    }
+});
+
+// DELETAR USUÁRIO
+app.delete('/api/admin/usuarios/:id', (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const usuario = usuarios.find(u => u.id === id);
+
+        if (usuario && usuario.isAdmin) {
+            return res.status(403).json({ erro: 'Não é possível deletar o administrador' });
+        }
+
+        const index = usuarios.findIndex(u => u.id === id);
+        if (index === -1) {
+            return res.status(404).json({ erro: 'Usuário não encontrado' });
+        }
+
+        usuarios.splice(index, 1);
+        console.log(`🗑️ Usuário ${usuario ? usuario.email : id} deletado`);
+        res.json({ mensagem: 'Usuário deletado com sucesso!' });
+    } catch (error) {
+        console.error('❌ Erro ao deletar usuário:', error);
+        res.status(500).json({ erro: 'Erro ao deletar usuário' });
+    }
+});
+
+// ============================================================
+//  ROTAS DE TAREFAS
 // ============================================================
 
 // Listar tarefas (exclui assistência)
 app.get('/api/tarefas', (req, res) => {
     try {
-        // Filtrar tarefas que NÃO são de assistência
         const tarefasFiltradas = tarefas
             .filter(t => t.tag !== 'assistencia')
             .map(t => {
@@ -163,7 +276,7 @@ app.get('/api/tarefas', (req, res) => {
                 };
             });
 
-        console.log(`📋 Carregando ${tarefasFiltradas.length} tarefas (excluindo assistência)`);
+        console.log(`📋 Carregando ${tarefasFiltradas.length} tarefas`);
         res.json(tarefasFiltradas);
     } catch (error) {
         console.error('❌ Erro ao buscar tarefas:', error);
@@ -171,14 +284,9 @@ app.get('/api/tarefas', (req, res) => {
     }
 });
 
-// ============================================================
-//  ROTAS DE TAREFAS - ASSISTÊNCIA TÉCNICA
-// ============================================================
-
-// Listar apenas tarefas com tag 'assistencia'
+// Listar tarefas de assistência
 app.get('/api/tarefas/assistencia', (req, res) => {
     try {
-        // Filtrar apenas tarefas com tag 'assistencia'
         const tarefasAssistencia = tarefas
             .filter(t => t.tag === 'assistencia')
             .map(t => {
@@ -192,17 +300,13 @@ app.get('/api/tarefas/assistencia', (req, res) => {
                 };
             });
 
-        console.log(`📋 Carregando ${tarefasAssistencia.length} tarefas de assistência técnica`);
+        console.log(`🔧 Carregando ${tarefasAssistencia.length} tarefas de assistência`);
         res.json(tarefasAssistencia);
     } catch (error) {
         console.error('❌ Erro ao buscar tarefas de assistência:', error);
         res.status(500).json({ erro: 'Erro ao carregar tarefas de assistência' });
     }
 });
-
-// ============================================================
-//  ROTAS DE CRUD DE TAREFAS
-// ============================================================
 
 // Criar tarefa
 app.post('/api/tarefas', (req, res) => {
@@ -213,7 +317,6 @@ app.post('/api/tarefas', (req, res) => {
             return res.status(400).json({ erro: 'Título é obrigatório' });
         }
 
-        // Criar subtarefas com IDs
         const subtarefasComId = (subtarefasList || []).map(s => ({
             id: subtarefaIdCounter++,
             texto: s.texto,
@@ -233,7 +336,7 @@ app.post('/api/tarefas', (req, res) => {
         };
 
         tarefas.push(novaTarefa);
-        console.log(`✅ Tarefa criada: ${titulo} (tag: ${tag || 'normal'})`);
+        console.log(`✅ Tarefa criada: ${titulo}`);
         res.json({
             id: novaTarefa.id,
             mensagem: 'Tarefa criada com sucesso!'
@@ -293,7 +396,6 @@ app.patch('/api/tarefas/:id/status', (req, res) => {
         }
 
         tarefa.status = status;
-        console.log(`✅ Status da tarefa ${id} atualizado para: ${status}`);
         res.json({ mensagem: 'Status atualizado com sucesso!' });
     } catch (error) {
         console.error('❌ Erro ao atualizar status:', error);
@@ -314,12 +416,10 @@ app.patch('/api/subtarefas/:id', (req, res) => {
                 if (subtarefa) {
                     subtarefa.concluida = concluida ? 1 : 0;
                     subtarefaEncontrada = true;
-                    console.log(`✅ Subtarefa ${id} atualizada: ${concluida ? 'concluída' : 'pendente'}`);
 
                     const todasConcluidas = tarefa.subtarefas.every(s => s.concluida === 1);
                     if (todasConcluidas && tarefa.status !== 'done') {
                         tarefa.status = 'done';
-                        console.log(`✅ Tarefa ${tarefa.id} automaticamente marcada como concluída`);
                     }
 
                     return res.json({ mensagem: 'Subtarefa atualizada!' });
@@ -328,7 +428,6 @@ app.patch('/api/subtarefas/:id', (req, res) => {
         }
 
         if (!subtarefaEncontrada) {
-            console.log(`❌ Subtarefa ${id} não encontrada`);
             return res.status(404).json({ erro: 'Subtarefa não encontrada' });
         }
     } catch (error) {
@@ -348,7 +447,6 @@ app.delete('/api/tarefas/:id', (req, res) => {
         }
 
         tarefas.splice(index, 1);
-        console.log(`✅ Tarefa ${id} deletada`);
         res.json({ mensagem: 'Tarefa deletada com sucesso!' });
     } catch (error) {
         console.error('❌ Erro ao deletar tarefa:', error);
@@ -357,56 +455,26 @@ app.delete('/api/tarefas/:id', (req, res) => {
 });
 
 // ============================================================
-//  ROTAS DE ADMIN
+//  ROTAS DE ADMIN - ESTATÍSTICAS
 // ============================================================
-
-app.get('/api/admin/usuarios', (req, res) => {
-    try {
-        const usuariosList = usuarios.map(u => ({
-            id: u.id,
-            nome: u.nome,
-            email: u.email,
-            is_admin: u.isAdmin ? 1 : 0,
-            total_tarefas: tarefas.filter(t => t.responsavel_id === u.id || t.usuario_id === u.id).length,
-            criado_em: new Date().toISOString()
-        }));
-        res.json(usuariosList);
-    } catch (error) {
-        console.error('❌ Erro ao listar usuários:', error);
-        res.status(500).json({ erro: 'Erro ao carregar usuários' });
-    }
-});
-
-app.delete('/api/admin/usuarios/:id', (req, res) => {
-    try {
-        const id = parseInt(req.params.id);
-        const usuario = usuarios.find(u => u.id === id);
-
-        if (usuario && usuario.isAdmin) {
-            return res.status(403).json({ erro: 'Não é possível deletar o administrador' });
-        }
-
-        const index = usuarios.findIndex(u => u.id === id);
-        if (index === -1) {
-            return res.status(404).json({ erro: 'Usuário não encontrado' });
-        }
-
-        usuarios.splice(index, 1);
-        res.json({ mensagem: 'Usuário deletado com sucesso!' });
-    } catch (error) {
-        res.status(500).json({ erro: 'Erro ao deletar usuário' });
-    }
-});
 
 app.get('/api/admin/estatisticas', (req, res) => {
     try {
         const totalSubtarefas = tarefas.reduce((acc, t) => acc + (t.subtarefas ? t.subtarefas.length : 0), 0);
+        const pendentes = usuarios.filter(u => u.status === 'pendente').length;
+        const aprovados = usuarios.filter(u => u.status === 'aprovado' || u.isAdmin).length;
+        const rejeitados = usuarios.filter(u => u.status === 'rejeitado').length;
+
         res.json({
             total_usuarios: usuarios.length,
+            usuarios_pendentes: pendentes,
+            usuarios_aprovados: aprovados,
+            usuarios_rejeitados: rejeitados,
             total_tarefas: tarefas.length,
             total_subtarefas: totalSubtarefas
         });
     } catch (error) {
+        console.error('❌ Erro ao carregar estatísticas:', error);
         res.status(500).json({ erro: 'Erro ao carregar estatísticas' });
     }
 });
@@ -440,14 +508,15 @@ app.get('/assistencia.html', (req, res) => {
 // ============================================================
 
 app.get('/api/health', (req, res) => {
+    const pendentes = usuarios.filter(u => u.status === 'pendente').length;
     res.json({
         status: 'ok',
         mensagem: 'Volmanday Server rodando no Railway!',
         porta: PORT,
         timestamp: new Date().toISOString(),
         usuarios: usuarios.length,
-        tarefas: tarefas.length,
-        tarefas_assistencia: tarefas.filter(t => t.tag === 'assistencia').length
+        usuarios_pendentes: pendentes,
+        tarefas: tarefas.length
     });
 });
 
@@ -470,6 +539,5 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Volmanday Server rodando na porta ${PORT}`);
     console.log(`📋 API Health: /api/health`);
     console.log(`👤 Admin: admin@admin.com / admin123`);
-    console.log(`📊 Usuários: ${usuarios.length}, Tarefas: ${tarefas.length}`);
-    console.log(`🔧 Tarefas de assistência: ${tarefas.filter(t => t.tag === 'assistencia').length}`);
+    console.log(`📊 Usuários: ${usuarios.length} (${usuarios.filter(u => u.status === 'pendente').length} pendentes)`);
 });

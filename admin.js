@@ -1,4 +1,4 @@
-// admin.js - Lógica da página de administração
+// admin.js - Lógica da página de administração com sistema de aprovação
 
 // ============================================================
 //  VERIFICAR AUTENTICAÇÃO E PERMISSÃO
@@ -15,14 +15,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // Mostrar nome do admin
     document.getElementById('adminName').textContent = `👑 ${usuario.nome}`;
 
-    // Carregar dados
     await carregarEstatisticas();
     await carregarUsuarios();
 
-    // Configurar eventos
     configurarEventosAdmin();
 });
 
@@ -56,7 +53,7 @@ async function carregarUsuarios() {
         tbody.innerHTML = '';
 
         if (usuarios.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-text">Nenhum usuário cadastrado</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-text">Nenhum usuário cadastrado</td></tr>';
             return;
         }
 
@@ -65,25 +62,94 @@ async function carregarUsuarios() {
 
             const dataCriacao = usuario.criado_em ? formatarDataAdmin(usuario.criado_em) : '-';
 
+            // Status com cores
+            let statusHtml = '';
+            if (usuario.status === 'pendente') {
+                statusHtml = '<span class="badge badge-pendente" style="background: #ff9800; color: white;">⏳ Pendente</span>';
+            } else if (usuario.status === 'aprovado') {
+                statusHtml = '<span class="badge badge-aprovado" style="background: #4CAF50; color: white;">✅ Aprovado</span>';
+            } else if (usuario.status === 'rejeitado') {
+                statusHtml = '<span class="badge badge-rejeitado" style="background: #f44336; color: white;">❌ Rejeitado</span>';
+            } else {
+                statusHtml = '<span class="badge badge-aprovado" style="background: #4CAF50; color: white;">✅ Aprovado</span>';
+            }
+
+            // Ações
+            let acoesHtml = '';
+            if (usuario.is_admin) {
+                acoesHtml = '<span class="badge badge-admin">👑 Admin</span>';
+            } else if (usuario.status === 'pendente') {
+                acoesHtml = `
+                    <button class="btn btn-success btn-sm" onclick="aprovarUsuario(${usuario.id})">✅ Aprovar</button>
+                    <button class="btn btn-danger btn-sm" onclick="rejeitarUsuario(${usuario.id})">❌ Rejeitar</button>
+                `;
+            } else {
+                acoesHtml = `
+                    <button class="btn btn-danger btn-sm" onclick="confirmarExclusaoUsuario(${usuario.id}, '${usuario.nome}')">🗑️</button>
+                `;
+            }
+
             tr.innerHTML = `
                 <td>#${usuario.id}</td>
                 <td><strong>${usuario.nome}</strong></td>
                 <td>${usuario.email}</td>
                 <td><span class="badge badge-tarefas">${usuario.total_tarefas || 0}</span></td>
                 <td>${usuario.is_admin ? '✅ Sim' : '❌ Não'}</td>
+                <td>${statusHtml}</td>
                 <td>${dataCriacao}</td>
-                <td>
-                    ${usuario.is_admin ?
-                    '<span class="badge badge-admin">Admin</span>' :
-                    `<button class="btn btn-danger btn-sm" onclick="confirmarExclusaoUsuario(${usuario.id}, '${usuario.nome}')">🗑️</button>`
-                }
-                </td>
+                <td>${acoesHtml}</td>
             `;
             tbody.appendChild(tr);
         });
     } catch (error) {
         console.error('Erro ao carregar usuários:', error);
-        document.getElementById('usuariosList').innerHTML = '<tr><td colspan="7" class="error-text">Erro ao carregar usuários</td></tr>';
+        document.getElementById('usuariosList').innerHTML = '<tr><td colspan="8" class="error-text">Erro ao carregar usuários</td></tr>';
+    }
+}
+
+// ============================================================
+//  APROVAR USUÁRIO
+// ============================================================
+
+async function aprovarUsuario(id) {
+    try {
+        const response = await apiRequest(`/admin/usuarios/${id}/aprovar`, {
+            method: 'PATCH'
+        });
+
+        if (response.ok) {
+            await carregarUsuarios();
+            await carregarEstatisticas();
+            alert('✅ Usuário aprovado com sucesso!');
+        } else {
+            const data = await response.json();
+            alert(data.erro || 'Erro ao aprovar usuário');
+        }
+    } catch (error) {
+        alert('Erro ao aprovar usuário: ' + error.message);
+    }
+}
+
+// ============================================================
+//  REJEITAR USUÁRIO
+// ============================================================
+
+async function rejeitarUsuario(id) {
+    try {
+        const response = await apiRequest(`/admin/usuarios/${id}/rejeitar`, {
+            method: 'PATCH'
+        });
+
+        if (response.ok) {
+            await carregarUsuarios();
+            await carregarEstatisticas();
+            alert('❌ Usuário rejeitado!');
+        } else {
+            const data = await response.json();
+            alert(data.erro || 'Erro ao rejeitar usuário');
+        }
+    } catch (error) {
+        alert('Erro ao rejeitar usuário: ' + error.message);
     }
 }
 
@@ -150,21 +216,18 @@ function fecharModalConfirmacao() {
 // ============================================================
 
 function configurarEventosAdmin() {
-    // Fechar modal
     document.getElementById('cancelConfirmBtn').addEventListener('click', fecharModalConfirmacao);
     document.getElementById('closeConfirmBtn').addEventListener('click', fecharModalConfirmacao);
     document.getElementById('confirmModal').addEventListener('click', (e) => {
         if (e.target === e.currentTarget) fecharModalConfirmacao();
     });
 
-    // Logout
     document.getElementById('logoutBtn').addEventListener('click', () => {
         if (confirm('Tem certeza que deseja sair?')) {
             logout();
         }
     });
 
-    // ESC para fechar modal
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             fecharModalConfirmacao();
@@ -177,3 +240,5 @@ function configurarEventosAdmin() {
 // ============================================================
 
 window.confirmarExclusaoUsuario = confirmarExclusaoUsuario;
+window.aprovarUsuario = aprovarUsuario;
+window.rejeitarUsuario = rejeitarUsuario;

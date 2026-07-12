@@ -1,4 +1,9 @@
-// auth-frontend.js
+// auth.js - Frontend com suporte a aprovação
+
+// ============================================================
+//  CONFIGURAÇÃO DA API
+// ============================================================
+
 // Detecta automaticamente se está em produção ou desenvolvimento
 const API_URL = window.location.hostname === 'localhost'
     ? 'http://localhost:3000/api'
@@ -63,9 +68,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
 
                 if (response.ok) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('usuario', JSON.stringify(data.usuario));
-                    window.location.href = 'index.html';
+                    alert('📝 Cadastro realizado com sucesso! Aguarde a aprovação do administrador.');
+                    window.location.href = 'login.html';
                 } else {
                     mostrarErro(data.erro || 'Erro ao cadastrar.');
                 }
@@ -105,7 +109,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.setItem('usuario', JSON.stringify(data.usuario));
                     window.location.href = 'index.html';
                 } else {
-                    mostrarErro(data.erro || 'Email ou senha incorretos.');
+                    // Verificar se é erro de pendência
+                    if (data.erro && data.erro.includes('Aguardando aprovação')) {
+                        alert('📝 ' + data.erro);
+                    } else if (data.erro && data.erro.includes('rejeitado')) {
+                        alert('❌ ' + data.erro);
+                    } else {
+                        mostrarErro(data.erro || 'Email ou senha incorretos.');
+                    }
                 }
             } catch (error) {
                 console.error('❌ Erro no login:', error);
@@ -179,10 +190,6 @@ async function carregarTarefas() {
     }
     return response.json();
 }
-
-// ============================================================
-//  FUNÇÃO PARA CARREGAR APENAS TAREFAS DE ASSISTÊNCIA
-// ============================================================
 
 async function carregarTarefasAssistencia() {
     const response = await apiRequest('/tarefas/assistencia');
