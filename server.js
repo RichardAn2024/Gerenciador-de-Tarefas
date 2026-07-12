@@ -23,28 +23,18 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // ============================================================
 //  CAMINHO DO FRONTEND
 // ============================================================
 
-// Railway usa o diretório atual como base
-const frontendPath = path.join(__dirname, '../frontend');
+// Os arquivos do frontend estão na RAIZ do projeto
+const staticPath = __dirname;
+console.log(`📂 Servindo frontend de: ${staticPath}`);
 
-// Se não encontrar ../frontend, tenta o diretório atual
-let staticPath = frontendPath;
-if (!fs.existsSync(frontendPath)) {
-    staticPath = path.join(__dirname, '../');
-    console.log(`📂 Frontend não encontrado em ${frontendPath}, tentando ${staticPath}`);
-}
-
-// Verifica se existe index.html no caminho
-if (fs.existsSync(path.join(staticPath, 'index.html'))) {
-    console.log(`📂 Servindo frontend de: ${staticPath}`);
-    app.use(express.static(staticPath));
-} else {
-    console.log(`⚠️ Frontend não encontrado. Servindo apenas API.`);
-}
+// Servir arquivos estáticos da raiz (HTML, CSS, JS)
+app.use(express.static(staticPath));
 
 // ============================================================
 //  ROTAS DA API
@@ -54,7 +44,8 @@ app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
         mensagem: 'Volmanday Server rodando no Railway!',
-        ambiente: process.env.NODE_ENV || 'development'
+        ambiente: process.env.NODE_ENV || 'development',
+        timestamp: new Date().toISOString()
     });
 });
 
@@ -272,44 +263,44 @@ app.get('/api/admin/estatisticas', auth.autenticar, auth.adminApenas, async (req
 //  ROTAS DO FRONTEND
 // ============================================================
 
-// Servir arquivos estáticos do frontend
-if (fs.existsSync(staticPath)) {
-    app.get('/', (req, res) => {
-        const indexPath = path.join(staticPath, 'index.html');
-        if (fs.existsSync(indexPath)) {
-            res.sendFile(indexPath);
-        } else {
-            res.json({ mensagem: 'API Volmanday rodando!' });
-        }
-    });
+// Rota principal
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
-    app.get('/login.html', (req, res) => {
-        res.sendFile(path.join(staticPath, 'login.html'));
-    });
+// Rotas HTML
+app.get('/login.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'login.html'));
+});
 
-    app.get('/cadastro.html', (req, res) => {
-        res.sendFile(path.join(staticPath, 'cadastro.html'));
-    });
+app.get('/cadastro.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'cadastro.html'));
+});
 
-    app.get('/admin.html', (req, res) => {
-        res.sendFile(path.join(staticPath, 'admin.html'));
-    });
+app.get('/admin.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin.html'));
+});
 
-    app.get('/assistencia.html', (req, res) => {
-        res.sendFile(path.join(staticPath, 'assistencia.html'));
-    });
-}
+app.get('/assistencia.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'assistencia.html'));
+});
 
-// FALLBACK
-app.get('*', (req, res) => {
-    if (fs.existsSync(staticPath) && fs.existsSync(path.join(staticPath, 'index.html'))) {
-        res.sendFile(path.join(staticPath, 'index.html'));
-    } else {
-        res.json({
-            mensagem: 'Volmanday API',
-            rotas: '/api/health, /api/login, /api/cadastro, /api/tarefas'
-        });
-    }
+// ============================================================
+//  FALLBACK - 404
+// ============================================================
+
+app.use((req, res) => {
+    res.status(404).json({
+        erro: 'Rota não encontrada',
+        mensagem: 'Volmanday API - Verifique a URL',
+        rotas_disponiveis: [
+            '/api/health',
+            '/api/login',
+            '/api/cadastro',
+            '/api/tarefas',
+            '/api/usuarios'
+        ]
+    });
 });
 
 // ============================================================
