@@ -1,4 +1,4 @@
-// server.js - Versão COMPLETA CORRIGIDA
+// server.js - Versão COMPLETA COM ASSISTÊNCIA TÉCNICA
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -125,7 +125,7 @@ app.post('/api/cadastro', (req, res) => {
 });
 
 // ============================================================
-//  ROTA DE USUÁRIOS (para o select de responsáveis)
+//  ROTA DE USUÁRIOS
 // ============================================================
 
 app.get('/api/usuarios', (req, res) => {
@@ -143,29 +143,66 @@ app.get('/api/usuarios', (req, res) => {
 });
 
 // ============================================================
-//  ROTAS DE TAREFAS - CORRIGIDAS
+//  ROTAS DE TAREFAS - PRINCIPAL
 // ============================================================
 
-// Listar tarefas
+// Listar tarefas (exclui assistência)
 app.get('/api/tarefas', (req, res) => {
     try {
-        // Adicionar informações do responsável
-        const tarefasComResponsavel = tarefas.map(t => {
-            const responsavel = usuarios.find(u => u.id === t.responsavel_id);
-            const criador = usuarios.find(u => u.id === t.usuario_id);
-            return {
-                ...t,
-                responsavel_nome: responsavel ? responsavel.nome : null,
-                criador_nome: criador ? criador.nome : 'Administrador',
-                criador_id: t.usuario_id || 1
-            };
-        });
-        res.json(tarefasComResponsavel);
+        // Filtrar tarefas que NÃO são de assistência
+        const tarefasFiltradas = tarefas
+            .filter(t => t.tag !== 'assistencia')
+            .map(t => {
+                const responsavel = usuarios.find(u => u.id === t.responsavel_id);
+                const criador = usuarios.find(u => u.id === t.usuario_id);
+                return {
+                    ...t,
+                    responsavel_nome: responsavel ? responsavel.nome : null,
+                    criador_nome: criador ? criador.nome : 'Administrador',
+                    criador_id: t.usuario_id || 1
+                };
+            });
+
+        console.log(`📋 Carregando ${tarefasFiltradas.length} tarefas (excluindo assistência)`);
+        res.json(tarefasFiltradas);
     } catch (error) {
         console.error('❌ Erro ao buscar tarefas:', error);
         res.status(500).json({ erro: 'Erro ao buscar tarefas' });
     }
 });
+
+// ============================================================
+//  ROTAS DE TAREFAS - ASSISTÊNCIA TÉCNICA
+// ============================================================
+
+// Listar apenas tarefas com tag 'assistencia'
+app.get('/api/tarefas/assistencia', (req, res) => {
+    try {
+        // Filtrar apenas tarefas com tag 'assistencia'
+        const tarefasAssistencia = tarefas
+            .filter(t => t.tag === 'assistencia')
+            .map(t => {
+                const responsavel = usuarios.find(u => u.id === t.responsavel_id);
+                const criador = usuarios.find(u => u.id === t.usuario_id);
+                return {
+                    ...t,
+                    responsavel_nome: responsavel ? responsavel.nome : null,
+                    criador_nome: criador ? criador.nome : 'Administrador',
+                    criador_id: t.usuario_id || 1
+                };
+            });
+
+        console.log(`📋 Carregando ${tarefasAssistencia.length} tarefas de assistência técnica`);
+        res.json(tarefasAssistencia);
+    } catch (error) {
+        console.error('❌ Erro ao buscar tarefas de assistência:', error);
+        res.status(500).json({ erro: 'Erro ao carregar tarefas de assistência' });
+    }
+});
+
+// ============================================================
+//  ROTAS DE CRUD DE TAREFAS
+// ============================================================
 
 // Criar tarefa
 app.post('/api/tarefas', (req, res) => {
@@ -185,7 +222,7 @@ app.post('/api/tarefas', (req, res) => {
 
         const novaTarefa = {
             id: tarefas.length + 1,
-            usuario_id: 1, // admin por padrão
+            usuario_id: 1,
             titulo: titulo,
             tag: tag || '',
             status: 'todo',
@@ -196,7 +233,7 @@ app.post('/api/tarefas', (req, res) => {
         };
 
         tarefas.push(novaTarefa);
-        console.log(`✅ Tarefa criada: ${titulo}`);
+        console.log(`✅ Tarefa criada: ${titulo} (tag: ${tag || 'normal'})`);
         res.json({
             id: novaTarefa.id,
             mensagem: 'Tarefa criada com sucesso!'
@@ -218,7 +255,6 @@ app.put('/api/tarefas/:id', (req, res) => {
             return res.status(404).json({ erro: 'Tarefa não encontrada' });
         }
 
-        // Atualizar subtarefas mantendo IDs existentes
         const subtarefasExistentes = tarefa.subtarefas || [];
         const novasSubtarefas = (subtarefasList || []).map(s => {
             const existente = subtarefasExistentes.find(e => e.texto === s.texto);
@@ -265,13 +301,12 @@ app.patch('/api/tarefas/:id/status', (req, res) => {
     }
 });
 
-// Alternar subtarefa - CORRIGIDO
+// Alternar subtarefa
 app.patch('/api/subtarefas/:id', (req, res) => {
     try {
         const id = parseInt(req.params.id);
         const { concluida } = req.body;
 
-        // Procurar a subtarefa em todas as tarefas
         let subtarefaEncontrada = false;
         for (const tarefa of tarefas) {
             if (tarefa.subtarefas) {
@@ -281,7 +316,6 @@ app.patch('/api/subtarefas/:id', (req, res) => {
                     subtarefaEncontrada = true;
                     console.log(`✅ Subtarefa ${id} atualizada: ${concluida ? 'concluída' : 'pendente'}`);
 
-                    // Verificar se todas as subtarefas estão concluídas
                     const todasConcluidas = tarefa.subtarefas.every(s => s.concluida === 1);
                     if (todasConcluidas && tarefa.status !== 'done') {
                         tarefa.status = 'done';
@@ -412,7 +446,8 @@ app.get('/api/health', (req, res) => {
         porta: PORT,
         timestamp: new Date().toISOString(),
         usuarios: usuarios.length,
-        tarefas: tarefas.length
+        tarefas: tarefas.length,
+        tarefas_assistencia: tarefas.filter(t => t.tag === 'assistencia').length
     });
 });
 
@@ -436,4 +471,5 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`📋 API Health: /api/health`);
     console.log(`👤 Admin: admin@admin.com / admin123`);
     console.log(`📊 Usuários: ${usuarios.length}, Tarefas: ${tarefas.length}`);
+    console.log(`🔧 Tarefas de assistência: ${tarefas.filter(t => t.tag === 'assistencia').length}`);
 });
