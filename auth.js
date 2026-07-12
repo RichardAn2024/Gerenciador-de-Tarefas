@@ -1,7 +1,10 @@
-// auth.js - Comunicação com o back-end (VERSÃO LOCAL)
-const API_URL = 'http://localhost:3000/api';
+// auth-frontend.js
+// Detecta automaticamente se está em produção ou desenvolvimento
+const API_URL = window.location.hostname === 'localhost'
+    ? 'http://localhost:3000/api'
+    : window.location.origin + '/api';
 
-console.log(`🔗 Conectando ao servidor local: ${API_URL}`);
+console.log(`🔗 Conectando ao servidor: ${API_URL}`);
 
 // ============================================================
 //  FUNÇÕES DE AUTENTICAÇÃO
