@@ -1,4 +1,4 @@
-// server.js - Versão COMPLETA com TODAS as rotas
+// server.js - Versão COMPLETA CORRIGIDA
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -37,7 +37,7 @@ const ADMIN_USER = {
 
 let usuarios = [ADMIN_USER];
 let tarefas = [];
-let subtarefas = [];
+let subtarefaIdCounter = 1;
 
 // ============================================================
 //  ROTAS DE AUTENTICAÇÃO
@@ -125,17 +125,49 @@ app.post('/api/cadastro', (req, res) => {
 });
 
 // ============================================================
-//  ROTAS DE TAREFAS
+//  ROTA DE USUÁRIOS (para o select de responsáveis)
 // ============================================================
 
+app.get('/api/usuarios', (req, res) => {
+    try {
+        const usuariosList = usuarios.map(u => ({
+            id: u.id,
+            nome: u.nome,
+            email: u.email
+        }));
+        res.json(usuariosList);
+    } catch (error) {
+        console.error('❌ Erro ao listar usuários:', error);
+        res.status(500).json({ erro: 'Erro ao carregar usuários' });
+    }
+});
+
+// ============================================================
+//  ROTAS DE TAREFAS - CORRIGIDAS
+// ============================================================
+
+// Listar tarefas
 app.get('/api/tarefas', (req, res) => {
     try {
-        res.json(tarefas);
+        // Adicionar informações do responsável
+        const tarefasComResponsavel = tarefas.map(t => {
+            const responsavel = usuarios.find(u => u.id === t.responsavel_id);
+            const criador = usuarios.find(u => u.id === t.usuario_id);
+            return {
+                ...t,
+                responsavel_nome: responsavel ? responsavel.nome : null,
+                criador_nome: criador ? criador.nome : 'Administrador',
+                criador_id: t.usuario_id || 1
+            };
+        });
+        res.json(tarefasComResponsavel);
     } catch (error) {
+        console.error('❌ Erro ao buscar tarefas:', error);
         res.status(500).json({ erro: 'Erro ao buscar tarefas' });
     }
 });
 
+// Criar tarefa
 app.post('/api/tarefas', (req, res) => {
     try {
         const { titulo, tag, subtarefas: subtarefasList, responsavel_id, prazo } = req.body;
@@ -144,89 +176,149 @@ app.post('/api/tarefas', (req, res) => {
             return res.status(400).json({ erro: 'Título é obrigatório' });
         }
 
+        // Criar subtarefas com IDs
+        const subtarefasComId = (subtarefasList || []).map(s => ({
+            id: subtarefaIdCounter++,
+            texto: s.texto,
+            concluida: s.concluida || 0
+        }));
+
         const novaTarefa = {
             id: tarefas.length + 1,
+            usuario_id: 1, // admin por padrão
             titulo: titulo,
             tag: tag || '',
             status: 'todo',
             responsavel_id: responsavel_id || null,
             prazo: prazo || null,
             data_criacao: new Date().toISOString(),
-            subtarefas: subtarefasList || []
+            subtarefas: subtarefasComId
         };
 
         tarefas.push(novaTarefa);
-        res.json({ id: novaTarefa.id, mensagem: 'Tarefa criada com sucesso!' });
+        console.log(`✅ Tarefa criada: ${titulo}`);
+        res.json({
+            id: novaTarefa.id,
+            mensagem: 'Tarefa criada com sucesso!'
+        });
     } catch (error) {
+        console.error('❌ Erro ao criar tarefa:', error);
         res.status(500).json({ erro: 'Erro ao criar tarefa' });
     }
 });
 
-app.delete('/api/tarefas/:id', (req, res) => {
-    try {
-        const id = parseInt(req.params.id);
-        const index = tarefas.findIndex(t => t.id === id);
-        if (index === -1) {
-            return res.status(404).json({ erro: 'Tarefa não encontrada' });
-        }
-        tarefas.splice(index, 1);
-        res.json({ mensagem: 'Tarefa deletada com sucesso!' });
-    } catch (error) {
-        res.status(500).json({ erro: 'Erro ao deletar tarefa' });
-    }
-});
-
-app.patch('/api/tarefas/:id/status', (req, res) => {
-    try {
-        const id = parseInt(req.params.id);
-        const { status } = req.body;
-        const tarefa = tarefas.find(t => t.id === id);
-        if (!tarefa) {
-            return res.status(404).json({ erro: 'Tarefa não encontrada' });
-        }
-        tarefa.status = status;
-        res.json({ mensagem: 'Status atualizado com sucesso!' });
-    } catch (error) {
-        res.status(500).json({ erro: 'Erro ao atualizar status' });
-    }
-});
-
+// Atualizar tarefa
 app.put('/api/tarefas/:id', (req, res) => {
     try {
         const id = parseInt(req.params.id);
         const { titulo, tag, subtarefas: subtarefasList, responsavel_id, prazo } = req.body;
         const tarefa = tarefas.find(t => t.id === id);
+
         if (!tarefa) {
             return res.status(404).json({ erro: 'Tarefa não encontrada' });
         }
+
+        // Atualizar subtarefas mantendo IDs existentes
+        const subtarefasExistentes = tarefa.subtarefas || [];
+        const novasSubtarefas = (subtarefasList || []).map(s => {
+            const existente = subtarefasExistentes.find(e => e.texto === s.texto);
+            if (existente) {
+                return { ...existente, concluida: s.concluida || 0 };
+            }
+            return {
+                id: subtarefaIdCounter++,
+                texto: s.texto,
+                concluida: s.concluida || 0
+            };
+        });
+
         tarefa.titulo = titulo || tarefa.titulo;
         tarefa.tag = tag || tarefa.tag;
         tarefa.responsavel_id = responsavel_id || tarefa.responsavel_id;
         tarefa.prazo = prazo || tarefa.prazo;
-        tarefa.subtarefas = subtarefasList || tarefa.subtarefas;
+        tarefa.subtarefas = novasSubtarefas;
+
         res.json({ mensagem: 'Tarefa atualizada com sucesso!' });
     } catch (error) {
+        console.error('❌ Erro ao atualizar tarefa:', error);
         res.status(500).json({ erro: 'Erro ao atualizar tarefa' });
     }
 });
 
+// Atualizar status da tarefa
+app.patch('/api/tarefas/:id/status', (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { status } = req.body;
+        const tarefa = tarefas.find(t => t.id === id);
+
+        if (!tarefa) {
+            return res.status(404).json({ erro: 'Tarefa não encontrada' });
+        }
+
+        tarefa.status = status;
+        console.log(`✅ Status da tarefa ${id} atualizado para: ${status}`);
+        res.json({ mensagem: 'Status atualizado com sucesso!' });
+    } catch (error) {
+        console.error('❌ Erro ao atualizar status:', error);
+        res.status(500).json({ erro: 'Erro ao atualizar status' });
+    }
+});
+
+// Alternar subtarefa - CORRIGIDO
 app.patch('/api/subtarefas/:id', (req, res) => {
     try {
         const id = parseInt(req.params.id);
         const { concluida } = req.body;
+
         // Procurar a subtarefa em todas as tarefas
+        let subtarefaEncontrada = false;
         for (const tarefa of tarefas) {
             if (tarefa.subtarefas) {
                 const subtarefa = tarefa.subtarefas.find(s => s.id === id);
                 if (subtarefa) {
                     subtarefa.concluida = concluida ? 1 : 0;
+                    subtarefaEncontrada = true;
+                    console.log(`✅ Subtarefa ${id} atualizada: ${concluida ? 'concluída' : 'pendente'}`);
+
+                    // Verificar se todas as subtarefas estão concluídas
+                    const todasConcluidas = tarefa.subtarefas.every(s => s.concluida === 1);
+                    if (todasConcluidas && tarefa.status !== 'done') {
+                        tarefa.status = 'done';
+                        console.log(`✅ Tarefa ${tarefa.id} automaticamente marcada como concluída`);
+                    }
+
                     return res.json({ mensagem: 'Subtarefa atualizada!' });
                 }
             }
         }
-        res.status(404).json({ erro: 'Subtarefa não encontrada' });
+
+        if (!subtarefaEncontrada) {
+            console.log(`❌ Subtarefa ${id} não encontrada`);
+            return res.status(404).json({ erro: 'Subtarefa não encontrada' });
+        }
     } catch (error) {
+        console.error('❌ Erro ao atualizar subtarefa:', error);
         res.status(500).json({ erro: 'Erro ao atualizar subtarefa' });
+    }
+});
+
+// Deletar tarefa
+app.delete('/api/tarefas/:id', (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const index = tarefas.findIndex(t => t.id === id);
+
+        if (index === -1) {
+            return res.status(404).json({ erro: 'Tarefa não encontrada' });
+        }
+
+        tarefas.splice(index, 1);
+        console.log(`✅ Tarefa ${id} deletada`);
+        res.json({ mensagem: 'Tarefa deletada com sucesso!' });
+    } catch (error) {
+        console.error('❌ Erro ao deletar tarefa:', error);
+        res.status(500).json({ erro: 'Erro ao deletar tarefa' });
     }
 });
 
@@ -255,13 +347,16 @@ app.delete('/api/admin/usuarios/:id', (req, res) => {
     try {
         const id = parseInt(req.params.id);
         const usuario = usuarios.find(u => u.id === id);
+
         if (usuario && usuario.isAdmin) {
             return res.status(403).json({ erro: 'Não é possível deletar o administrador' });
         }
+
         const index = usuarios.findIndex(u => u.id === id);
         if (index === -1) {
             return res.status(404).json({ erro: 'Usuário não encontrado' });
         }
+
         usuarios.splice(index, 1);
         res.json({ mensagem: 'Usuário deletado com sucesso!' });
     } catch (error) {
@@ -271,10 +366,11 @@ app.delete('/api/admin/usuarios/:id', (req, res) => {
 
 app.get('/api/admin/estatisticas', (req, res) => {
     try {
+        const totalSubtarefas = tarefas.reduce((acc, t) => acc + (t.subtarefas ? t.subtarefas.length : 0), 0);
         res.json({
             total_usuarios: usuarios.length,
             total_tarefas: tarefas.length,
-            total_subtarefas: 0
+            total_subtarefas: totalSubtarefas
         });
     } catch (error) {
         res.status(500).json({ erro: 'Erro ao carregar estatísticas' });
@@ -314,7 +410,9 @@ app.get('/api/health', (req, res) => {
         status: 'ok',
         mensagem: 'Volmanday Server rodando no Railway!',
         porta: PORT,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        usuarios: usuarios.length,
+        tarefas: tarefas.length
     });
 });
 
@@ -337,4 +435,5 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Volmanday Server rodando na porta ${PORT}`);
     console.log(`📋 API Health: /api/health`);
     console.log(`👤 Admin: admin@admin.com / admin123`);
+    console.log(`📊 Usuários: ${usuarios.length}, Tarefas: ${tarefas.length}`);
 });
