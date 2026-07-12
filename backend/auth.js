@@ -1,12 +1,12 @@
-// auth.js - Autenticação para teste local
+// auth.js - Autenticação
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const db = require('./database');
 require('dotenv').config();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-local';
+const JWT_SECRET = process.env.JWT_SECRET || 'volmanday-secret-key-change-in-production';
 
-console.log('🔐 Auth inicializado (Local)');
+console.log('🔐 Auth inicializado');
 
 // ============================================================
 //  FUNÇÕES DE AUTENTICAÇÃO

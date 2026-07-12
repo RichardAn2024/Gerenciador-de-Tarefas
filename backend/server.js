@@ -1,4 +1,4 @@
-// server.js - Servidor para teste local
+// server.js - Servidor para Railway
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -10,7 +10,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-console.log('🚀 Iniciando servidor Volmanday LOCAL...');
+console.log('🚀 Iniciando servidor Volmanday...');
 
 // ============================================================
 //  MIDDLEWARE
@@ -28,31 +28,23 @@ app.use(express.json());
 //  CAMINHO DO FRONTEND
 // ============================================================
 
+// Railway usa o diretório atual como base
 const frontendPath = path.join(__dirname, '../frontend');
 
-console.log(`📂 Servindo frontend de: ${frontendPath}`);
+// Se não encontrar ../frontend, tenta o diretório atual
+let staticPath = frontendPath;
+if (!fs.existsSync(frontendPath)) {
+    staticPath = path.join(__dirname, '../');
+    console.log(`📂 Frontend não encontrado em ${frontendPath}, tentando ${staticPath}`);
+}
 
-app.use(express.static(frontendPath));
-
-app.get('/', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'index.html'));
-});
-
-app.get('/login.html', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'login.html'));
-});
-
-app.get('/cadastro.html', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'cadastro.html'));
-});
-
-app.get('/admin.html', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'admin.html'));
-});
-
-app.get('/assistencia.html', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'assistencia.html'));
-});
+// Verifica se existe index.html no caminho
+if (fs.existsSync(path.join(staticPath, 'index.html'))) {
+    console.log(`📂 Servindo frontend de: ${staticPath}`);
+    app.use(express.static(staticPath));
+} else {
+    console.log(`⚠️ Frontend não encontrado. Servindo apenas API.`);
+}
 
 // ============================================================
 //  ROTAS DA API
@@ -61,8 +53,8 @@ app.get('/assistencia.html', (req, res) => {
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
-        mensagem: 'Volmanday Server rodando localmente!',
-        frontendPath: frontendPath
+        mensagem: 'Volmanday Server rodando no Railway!',
+        ambiente: process.env.NODE_ENV || 'development'
     });
 });
 
@@ -108,10 +100,7 @@ app.get('/api/usuarios', auth.autenticar, async (req, res) => {
     }
 });
 
-// ============================================================
-//  TAREFAS - LISTAR (EXCLUI ASSISTÊNCIA)
-// ============================================================
-
+// TAREFAS - LISTAR (EXCLUI ASSISTÊNCIA)
 app.get('/api/tarefas', auth.autenticar, async (req, res) => {
     try {
         const [tarefas] = await db.query(`
@@ -137,10 +126,7 @@ app.get('/api/tarefas', auth.autenticar, async (req, res) => {
     }
 });
 
-// ============================================================
-//  TAREFAS - ASSISTÊNCIA (APENAS TAG 'assistencia')
-// ============================================================
-
+// TAREFAS - ASSISTÊNCIA
 app.get('/api/tarefas/assistencia', auth.autenticar, async (req, res) => {
     try {
         const [tarefas] = await db.query(`
@@ -282,9 +268,48 @@ app.get('/api/admin/estatisticas', auth.autenticar, auth.adminApenas, async (req
     }
 });
 
+// ============================================================
+//  ROTAS DO FRONTEND
+// ============================================================
+
+// Servir arquivos estáticos do frontend
+if (fs.existsSync(staticPath)) {
+    app.get('/', (req, res) => {
+        const indexPath = path.join(staticPath, 'index.html');
+        if (fs.existsSync(indexPath)) {
+            res.sendFile(indexPath);
+        } else {
+            res.json({ mensagem: 'API Volmanday rodando!' });
+        }
+    });
+
+    app.get('/login.html', (req, res) => {
+        res.sendFile(path.join(staticPath, 'login.html'));
+    });
+
+    app.get('/cadastro.html', (req, res) => {
+        res.sendFile(path.join(staticPath, 'cadastro.html'));
+    });
+
+    app.get('/admin.html', (req, res) => {
+        res.sendFile(path.join(staticPath, 'admin.html'));
+    });
+
+    app.get('/assistencia.html', (req, res) => {
+        res.sendFile(path.join(staticPath, 'assistencia.html'));
+    });
+}
+
 // FALLBACK
 app.get('*', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'index.html'));
+    if (fs.existsSync(staticPath) && fs.existsSync(path.join(staticPath, 'index.html'))) {
+        res.sendFile(path.join(staticPath, 'index.html'));
+    } else {
+        res.json({
+            mensagem: 'Volmanday API',
+            rotas: '/api/health, /api/login, /api/cadastro, /api/tarefas'
+        });
+    }
 });
 
 // ============================================================
@@ -292,10 +317,9 @@ app.get('*', (req, res) => {
 // ============================================================
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Volmanday Server rodando em http://localhost:${PORT}`);
-    console.log(`📋 API: http://localhost:${PORT}/api/health`);
-    console.log(`📂 Frontend: ${frontendPath}`);
+    console.log(`🚀 Volmanday Server rodando na porta ${PORT}`);
+    console.log(`📋 API Health: /api/health`);
 });
 
-process.on('uncaughtException', (err) => console.error('❌ Erro:', err));
-process.on('unhandledRejection', (err) => console.error('❌ Erro:', err));
+process.on('uncaughtException', (err) => console.error('❌ Erro não tratado:', err));
+process.on('unhandledRejection', (err) => console.error('❌ Rejeição não tratada:', err));

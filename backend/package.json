@@ -1,11 +1,10 @@
 {
-    "name": "mini-monday-backend",
+    "name": "volmanday-backend",
     "version": "1.0.0",
-    "description": "Backend para Mini Monday - Teste Local",
+    "description": "Backend para Volmanday - Sistema de Gestão de Tarefas",
     "main": "server.js",
     "scripts": {
-        "start": "node server.js",
-        "dev": "node server.js"
+        "start": "node server.js"
     },
     "dependencies": {
         "bcryptjs": "^2.4.3",
@@ -14,5 +13,8 @@
         "express": "^4.18.2",
         "jsonwebtoken": "^9.0.0",
         "mysql2": "^3.22.5"
+    },
+    "engines": {
+        "node": ">=16.0.0"
     }
 }

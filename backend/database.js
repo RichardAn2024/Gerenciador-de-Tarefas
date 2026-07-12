@@ -1,23 +1,26 @@
-// database.js - Configuração MySQL para teste local
+// database.js - Configuração MySQL
 const mysql = require('mysql2');
 require('dotenv').config();
 
-console.log('📁 Configuração do Banco Local:');
+console.log('📁 Configuração do Banco:');
 
+// Configuração para Railway MySQL
 const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'mini_monday',
+    database: process.env.DB_NAME || 'railway',
     port: process.env.DB_PORT || 3306,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
+    queueLimit: 0,
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined
 };
 
 console.log(`   Host: ${dbConfig.host}`);
 console.log(`   Database: ${dbConfig.database}`);
 console.log(`   User: ${dbConfig.user}`);
+console.log(`   SSL: ${dbConfig.ssl ? 'Ativado' : 'Desativado'}`);
 
 const pool = mysql.createPool(dbConfig);
 const db = pool.promise();
@@ -56,6 +59,7 @@ async function inicializarBanco() {
                 status ENUM('todo', 'doing', 'done') DEFAULT 'todo',
                 tag VARCHAR(50),
                 responsavel_id INT,
+                prazo DATE NULL,
                 data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
                 FOREIGN KEY (responsavel_id) REFERENCES usuarios(id) ON DELETE SET NULL
@@ -94,7 +98,7 @@ async function inicializarBanco() {
             console.log('✅ Admin já existe:', rows[0].email);
         }
 
-        console.log('✅ Banco de dados MySQL inicializado com sucesso!');
+        console.log('✅ Banco de dados inicializado com sucesso!');
         return true;
     } catch (error) {
         console.error('❌ Erro ao inicializar banco:', error.message);
