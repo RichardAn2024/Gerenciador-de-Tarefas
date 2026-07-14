@@ -1,4 +1,4 @@
-// server.js - Versão com MySQL (persistente)
+// server.js - Versão com MySQL (persistente) - CORRIGIDO
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -30,176 +30,255 @@ app.use(express.static(__dirname));
 const codigosRecuperacao = {};
 
 // ============================================================
-//  FUNÇÕES AUXILIARES DO BANCO
+//  FUNÇÕES AUXILIARES DO BANCO - CORRIGIDAS
 // ============================================================
 
+async function testDbConnection() {
+    try {
+        const [result] = await db.query('SELECT 1+1 as test');
+        console.log('✅ Conexão com o banco OK!');
+        return true;
+    } catch (error) {
+        console.error('❌ Erro na conexão com o banco:', error.message);
+        return false;
+    }
+}
+
 async function getUsuarioByEmail(email) {
-    const [rows] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
-    return rows[0] || null;
+    try {
+        const [rows] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
+        return rows && rows.length > 0 ? rows[0] : null;
+    } catch (error) {
+        console.error('❌ Erro em getUsuarioByEmail:', error.message);
+        throw error;
+    }
 }
 
 async function getUsuarioById(id) {
-    const [rows] = await db.query('SELECT * FROM usuarios WHERE id = ?', [id]);
-    return rows[0] || null;
+    try {
+        const [rows] = await db.query('SELECT * FROM usuarios WHERE id = ?', [id]);
+        return rows && rows.length > 0 ? rows[0] : null;
+    } catch (error) {
+        console.error('❌ Erro em getUsuarioById:', error.message);
+        throw error;
+    }
 }
 
 async function getAllUsuarios() {
-    const [rows] = await db.query('SELECT id, nome, email, is_admin, status, criado_em FROM usuarios ORDER BY criado_em DESC');
-    return rows;
+    try {
+        const [rows] = await db.query('SELECT id, nome, email, is_admin, status, criado_em FROM usuarios ORDER BY criado_em DESC');
+        return rows || [];
+    } catch (error) {
+        console.error('❌ Erro em getAllUsuarios:', error.message);
+        return [];
+    }
 }
 
 async function createUsuario(nome, email, senha) {
-    const salt = bcrypt.genSaltSync(10);
-    const senhaHash = bcrypt.hashSync(senha, salt);
-    const [result] = await db.query(
-        'INSERT INTO usuarios (nome, email, senha, is_admin, status) VALUES (?, ?, ?, ?, ?)',
-        [nome, email, senhaHash, 0, 'pendente']
-    );
-    return result.insertId;
+    try {
+        const salt = bcrypt.genSaltSync(10);
+        const senhaHash = bcrypt.hashSync(senha, salt);
+        const [result] = await db.query(
+            'INSERT INTO usuarios (nome, email, senha, is_admin, status) VALUES (?, ?, ?, ?, ?)',
+            [nome, email, senhaHash, 0, 'pendente']
+        );
+        return result.insertId;
+    } catch (error) {
+        console.error('❌ Erro em createUsuario:', error.message);
+        throw error;
+    }
 }
 
 async function updateUsuarioStatus(id, status) {
-    await db.query('UPDATE usuarios SET status = ? WHERE id = ?', [status, id]);
+    try {
+        await db.query('UPDATE usuarios SET status = ? WHERE id = ?', [status, id]);
+    } catch (error) {
+        console.error('❌ Erro em updateUsuarioStatus:', error.message);
+        throw error;
+    }
 }
 
 async function deleteUsuario(id) {
-    await db.query('DELETE FROM usuarios WHERE id = ?', [id]);
+    try {
+        await db.query('DELETE FROM usuarios WHERE id = ?', [id]);
+    } catch (error) {
+        console.error('❌ Erro em deleteUsuario:', error.message);
+        throw error;
+    }
 }
 
 async function getTarefas() {
-    const [rows] = await db.query(`
-        SELECT t.*, 
-               u.nome as criador_nome,
-               GROUP_CONCAT(DISTINCT r.usuario_id) as responsaveis_ids,
-               GROUP_CONCAT(DISTINCT u2.nome) as responsaveis_nomes
-        FROM tarefas t
-        LEFT JOIN usuarios u ON t.usuario_id = u.id
-        LEFT JOIN tarefa_responsaveis r ON t.id = r.tarefa_id
-        LEFT JOIN usuarios u2 ON r.usuario_id = u2.id
-        WHERE t.tag != 'assistencia' OR t.tag IS NULL
-        GROUP BY t.id
-        ORDER BY t.data_criacao DESC
-    `);
+    try {
+        const [rows] = await db.query(`
+            SELECT t.*, 
+                   u.nome as criador_nome,
+                   GROUP_CONCAT(DISTINCT r.usuario_id) as responsaveis_ids,
+                   GROUP_CONCAT(DISTINCT u2.nome) as responsaveis_nomes
+            FROM tarefas t
+            LEFT JOIN usuarios u ON t.usuario_id = u.id
+            LEFT JOIN tarefa_responsaveis r ON t.id = r.tarefa_id
+            LEFT JOIN usuarios u2 ON r.usuario_id = u2.id
+            WHERE t.tag != 'assistencia' OR t.tag IS NULL
+            GROUP BY t.id
+            ORDER BY t.data_criacao DESC
+        `);
 
-    // Buscar subtarefas para cada tarefa
-    for (const tarefa of rows) {
-        const [subtasks] = await db.query('SELECT * FROM subtarefas WHERE tarefa_id = ?', [tarefa.id]);
-        tarefa.subtarefas = subtasks;
-        tarefa.responsaveis_ids = tarefa.responsaveis_ids ? tarefa.responsaveis_ids.split(',').map(Number) : [];
-        tarefa.responsaveis_nomes = tarefa.responsaveis_nomes ? tarefa.responsaveis_nomes.split(',') : [];
+        for (const tarefa of rows || []) {
+            const [subtasks] = await db.query('SELECT * FROM subtarefas WHERE tarefa_id = ?', [tarefa.id]);
+            tarefa.subtarefas = subtasks || [];
+            tarefa.responsaveis_ids = tarefa.responsaveis_ids ? tarefa.responsaveis_ids.split(',').map(Number) : [];
+            tarefa.responsaveis_nomes = tarefa.responsaveis_nomes ? tarefa.responsaveis_nomes.split(',') : [];
+        }
+
+        return rows || [];
+    } catch (error) {
+        console.error('❌ Erro em getTarefas:', error.message);
+        return [];
     }
-
-    return rows;
 }
 
 async function getTarefasAssistencia() {
-    const [rows] = await db.query(`
-        SELECT t.*, 
-               u.nome as criador_nome,
-               GROUP_CONCAT(DISTINCT r.usuario_id) as responsaveis_ids,
-               GROUP_CONCAT(DISTINCT u2.nome) as responsaveis_nomes
-        FROM tarefas t
-        LEFT JOIN usuarios u ON t.usuario_id = u.id
-        LEFT JOIN tarefa_responsaveis r ON t.id = r.tarefa_id
-        LEFT JOIN usuarios u2 ON r.usuario_id = u2.id
-        WHERE t.tag = 'assistencia'
-        GROUP BY t.id
-        ORDER BY t.data_criacao DESC
-    `);
+    try {
+        const [rows] = await db.query(`
+            SELECT t.*, 
+                   u.nome as criador_nome,
+                   GROUP_CONCAT(DISTINCT r.usuario_id) as responsaveis_ids,
+                   GROUP_CONCAT(DISTINCT u2.nome) as responsaveis_nomes
+            FROM tarefas t
+            LEFT JOIN usuarios u ON t.usuario_id = u.id
+            LEFT JOIN tarefa_responsaveis r ON t.id = r.tarefa_id
+            LEFT JOIN usuarios u2 ON r.usuario_id = u2.id
+            WHERE t.tag = 'assistencia'
+            GROUP BY t.id
+            ORDER BY t.data_criacao DESC
+        `);
 
-    for (const tarefa of rows) {
-        const [subtasks] = await db.query('SELECT * FROM subtarefas WHERE tarefa_id = ?', [tarefa.id]);
-        tarefa.subtarefas = subtasks;
-        tarefa.responsaveis_ids = tarefa.responsaveis_ids ? tarefa.responsaveis_ids.split(',').map(Number) : [];
-        tarefa.responsaveis_nomes = tarefa.responsaveis_nomes ? tarefa.responsaveis_nomes.split(',') : [];
+        for (const tarefa of rows || []) {
+            const [subtasks] = await db.query('SELECT * FROM subtarefas WHERE tarefa_id = ?', [tarefa.id]);
+            tarefa.subtarefas = subtasks || [];
+            tarefa.responsaveis_ids = tarefa.responsaveis_ids ? tarefa.responsaveis_ids.split(',').map(Number) : [];
+            tarefa.responsaveis_nomes = tarefa.responsaveis_nomes ? tarefa.responsaveis_nomes.split(',') : [];
+        }
+
+        return rows || [];
+    } catch (error) {
+        console.error('❌ Erro em getTarefasAssistencia:', error.message);
+        return [];
     }
-
-    return rows;
 }
 
 async function createTarefa(usuario_id, titulo, tag, subtarefas, responsaveis, prazo) {
-    const [result] = await db.query(
-        'INSERT INTO tarefas (usuario_id, titulo, tag, prazo) VALUES (?, ?, ?, ?)',
-        [usuario_id, titulo, tag || '', prazo || null]
-    );
-    const tarefaId = result.insertId;
-
-    // Inserir subtarefas
-    for (const sub of (subtarefas || [])) {
-        await db.query(
-            'INSERT INTO subtarefas (tarefa_id, texto, concluida) VALUES (?, ?, ?)',
-            [tarefaId, sub.texto, sub.concluida || 0]
+    try {
+        const [result] = await db.query(
+            'INSERT INTO tarefas (usuario_id, titulo, tag, prazo) VALUES (?, ?, ?, ?)',
+            [usuario_id, titulo, tag || '', prazo || null]
         );
-    }
+        const tarefaId = result.insertId;
 
-    // Inserir responsáveis
-    for (const respId of (responsaveis || [])) {
-        await db.query(
-            'INSERT INTO tarefa_responsaveis (tarefa_id, usuario_id) VALUES (?, ?)',
-            [tarefaId, respId]
-        );
-    }
+        for (const sub of (subtarefas || [])) {
+            await db.query(
+                'INSERT INTO subtarefas (tarefa_id, texto, concluida) VALUES (?, ?, ?)',
+                [tarefaId, sub.texto, sub.concluida || 0]
+            );
+        }
 
-    return tarefaId;
+        for (const respId of (responsaveis || [])) {
+            await db.query(
+                'INSERT INTO tarefa_responsaveis (tarefa_id, usuario_id) VALUES (?, ?)',
+                [tarefaId, respId]
+            );
+        }
+
+        return tarefaId;
+    } catch (error) {
+        console.error('❌ Erro em createTarefa:', error.message);
+        throw error;
+    }
 }
 
 async function updateTarefa(id, titulo, tag, subtarefas, responsaveis, prazo) {
-    await db.query(
-        'UPDATE tarefas SET titulo = ?, tag = ?, prazo = ? WHERE id = ?',
-        [titulo, tag || '', prazo || null, id]
-    );
-
-    // Remover subtarefas antigas
-    await db.query('DELETE FROM subtarefas WHERE tarefa_id = ?', [id]);
-
-    // Inserir novas subtarefas
-    for (const sub of (subtarefas || [])) {
+    try {
         await db.query(
-            'INSERT INTO subtarefas (tarefa_id, texto, concluida) VALUES (?, ?, ?)',
-            [id, sub.texto, sub.concluida || 0]
+            'UPDATE tarefas SET titulo = ?, tag = ?, prazo = ? WHERE id = ?',
+            [titulo, tag || '', prazo || null, id]
         );
-    }
 
-    // Remover responsáveis antigos
-    await db.query('DELETE FROM tarefa_responsaveis WHERE tarefa_id = ?', [id]);
+        await db.query('DELETE FROM subtarefas WHERE tarefa_id = ?', [id]);
+        for (const sub of (subtarefas || [])) {
+            await db.query(
+                'INSERT INTO subtarefas (tarefa_id, texto, concluida) VALUES (?, ?, ?)',
+                [id, sub.texto, sub.concluida || 0]
+            );
+        }
 
-    // Inserir novos responsáveis
-    for (const respId of (responsaveis || [])) {
-        await db.query(
-            'INSERT INTO tarefa_responsaveis (tarefa_id, usuario_id) VALUES (?, ?)',
-            [id, respId]
-        );
+        await db.query('DELETE FROM tarefa_responsaveis WHERE tarefa_id = ?', [id]);
+        for (const respId of (responsaveis || [])) {
+            await db.query(
+                'INSERT INTO tarefa_responsaveis (tarefa_id, usuario_id) VALUES (?, ?)',
+                [id, respId]
+            );
+        }
+    } catch (error) {
+        console.error('❌ Erro em updateTarefa:', error.message);
+        throw error;
     }
 }
 
 async function updateTarefaStatus(id, status) {
-    await db.query('UPDATE tarefas SET status = ? WHERE id = ?', [status, id]);
+    try {
+        await db.query('UPDATE tarefas SET status = ? WHERE id = ?', [status, id]);
+    } catch (error) {
+        console.error('❌ Erro em updateTarefaStatus:', error.message);
+        throw error;
+    }
 }
 
 async function deleteTarefa(id) {
-    await db.query('DELETE FROM tarefas WHERE id = ?', [id]);
+    try {
+        await db.query('DELETE FROM tarefas WHERE id = ?', [id]);
+    } catch (error) {
+        console.error('❌ Erro em deleteTarefa:', error.message);
+        throw error;
+    }
 }
 
 async function toggleSubtarefa(id, concluida) {
-    await db.query('UPDATE subtarefas SET concluida = ? WHERE id = ?', [concluida, id]);
+    try {
+        await db.query('UPDATE subtarefas SET concluida = ? WHERE id = ?', [concluida, id]);
+    } catch (error) {
+        console.error('❌ Erro em toggleSubtarefa:', error.message);
+        throw error;
+    }
 }
 
 async function getEstatisticas() {
-    const [usuarios] = await db.query('SELECT COUNT(*) as total FROM usuarios');
-    const [tarefas] = await db.query('SELECT COUNT(*) as total FROM tarefas');
-    const [subtarefas] = await db.query('SELECT COUNT(*) as total FROM subtarefas');
-    const [pendentes] = await db.query('SELECT COUNT(*) as total FROM usuarios WHERE status = "pendente"');
-    const [aprovados] = await db.query('SELECT COUNT(*) as total FROM usuarios WHERE status = "aprovado" OR is_admin = 1');
-    const [rejeitados] = await db.query('SELECT COUNT(*) as total FROM usuarios WHERE status = "rejeitado"');
+    try {
+        const [usuarios] = await db.query('SELECT COUNT(*) as total FROM usuarios');
+        const [tarefas] = await db.query('SELECT COUNT(*) as total FROM tarefas');
+        const [subtarefas] = await db.query('SELECT COUNT(*) as total FROM subtarefas');
+        const [pendentes] = await db.query('SELECT COUNT(*) as total FROM usuarios WHERE status = "pendente"');
+        const [aprovados] = await db.query('SELECT COUNT(*) as total FROM usuarios WHERE status = "aprovado" OR is_admin = 1');
+        const [rejeitados] = await db.query('SELECT COUNT(*) as total FROM usuarios WHERE status = "rejeitado"');
 
-    return {
-        total_usuarios: usuarios[0].total,
-        usuarios_pendentes: pendentes[0].total,
-        usuarios_aprovados: aprovados[0].total,
-        usuarios_rejeitados: rejeitados[0].total,
-        total_tarefas: tarefas[0].total,
-        total_subtarefas: subtarefas[0].total
-    };
+        return {
+            total_usuarios: usuarios[0]?.total || 0,
+            usuarios_pendentes: pendentes[0]?.total || 0,
+            usuarios_aprovados: aprovados[0]?.total || 0,
+            usuarios_rejeitados: rejeitados[0]?.total || 0,
+            total_tarefas: tarefas[0]?.total || 0,
+            total_subtarefas: subtarefas[0]?.total || 0
+        };
+    } catch (error) {
+        console.error('❌ Erro em getEstatisticas:', error.message);
+        return {
+            total_usuarios: 0,
+            usuarios_pendentes: 0,
+            usuarios_aprovados: 0,
+            usuarios_rejeitados: 0,
+            total_tarefas: 0,
+            total_subtarefas: 0
+        };
+    }
 }
 
 // ============================================================
@@ -603,8 +682,23 @@ app.use((req, res) => {
 });
 
 // ============================================================
-//  INICIAR SERVIDOR
+//  INICIAR SERVIDOR - COM TESTE DE CONEXÃO
 // ============================================================
+
+// Testar conexão com o banco antes de iniciar
+(async function init() {
+    try {
+        console.log('🔄 Testando conexão com o MySQL...');
+        const connected = await testDbConnection();
+        if (!connected) {
+            console.error('❌ Não foi possível conectar ao MySQL. Verifique as variáveis de ambiente.');
+            process.exit(1);
+        }
+    } catch (error) {
+        console.error('❌ Erro ao testar conexão:', error);
+        process.exit(1);
+    }
+})();
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 VolControl Server rodando na porta ${PORT}`);
