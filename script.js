@@ -1,5 +1,5 @@
 /* ============================================================
-   script.js - Lógica completa do Dashboard (COM ORDENAÇÃO)
+   script.js - Lógica completa do Dashboard (COM ORDENAÇÃO SOB DEMANDA)
    ============================================================ */
 
 // --- Estado ---
@@ -7,7 +7,7 @@ let tarefas = [];
 let currentFilter = 'all';
 let currentResponsavelFilter = 'all';
 let currentSearchTerm = '';
-let currentSort = 'criacao_desc'; // NOVO: padrão de ordenação
+let currentSort = 'nenhum'; // Sem ordenação por padrão
 let editingTaskId = null;
 let usuariosDisponiveis = [];
 let usuarioLogado = null;
@@ -173,10 +173,15 @@ async function carregarTarefasDoServidor() {
 }
 
 // ============================================================
-//  ORDENAÇÃO
+//  ORDENAÇÃO - SÓ QUANDO SELECIONADO
 // ============================================================
 
 function sortTasks(tasks) {
+    // Se não houver filtro selecionado, retorna as tarefas sem ordenar
+    if (currentSort === 'nenhum') {
+        return tasks;
+    }
+
     const sortFunctions = {
         'criacao_asc': (a, b) => new Date(a.data_criacao) - new Date(b.data_criacao),
         'criacao_desc': (a, b) => new Date(b.data_criacao) - new Date(a.data_criacao),
@@ -209,7 +214,7 @@ function sortTasks(tasks) {
 }
 
 // ============================================================
-//  RENDERIZAÇÃO - COM ORDENAÇÃO E PAGINAÇÃO
+//  RENDERIZAÇÃO - COM ORDENAÇÃO SOB DEMANDA E PAGINAÇÃO
 // ============================================================
 
 function render() {
@@ -236,7 +241,7 @@ function render() {
         );
     }
 
-    // ORDENAÇÃO
+    // ORDENAÇÃO (só se selecionado)
     filtered = sortTasks(filtered);
 
     // Paginação
@@ -1009,7 +1014,7 @@ if (filterResponsavel) {
 }
 
 // ============================================================
-//  CONFIGURAR EVENTOS - COM ORDENAÇÃO E PAGINAÇÃO
+//  CONFIGURAR EVENTOS - COM ORDENAÇÃO SOB DEMANDA E PAGINAÇÃO
 // ============================================================
 
 function configurarEventos() {
@@ -1078,7 +1083,7 @@ function configurarEventos() {
         searchInput.focus();
     });
 
-    // --- NOVO: Ordenação ---
+    // --- Ordenação (só quando selecionado) ---
     if (sortBy) {
         sortBy.addEventListener('change', () => {
             currentSort = sortBy.value;

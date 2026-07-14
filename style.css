@@ -1469,3 +1469,51 @@ select[multiple] option:hover {
         max-width: 200px;
     }
 }
+
+/* ============================================================
+   ORDENAÇÃO
+   ============================================================ */
+
+.sort-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 8px;
+}
+
+.sort-container label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #4a4a4a;
+    white-space: nowrap;
+}
+
+.sort-container select {
+    padding: 6px 12px;
+    border: 1.5px solid #e1e4e8;
+    border-radius: 8px;
+    font-size: 13px;
+    background: white;
+    cursor: pointer;
+    transition: 0.2s;
+    min-width: 140px;
+}
+
+.sort-container select:focus {
+    outline: none;
+    border-color: #F57C00;
+    box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.15);
+}
+
+/* Responsividade da ordenação */
+@media (max-width: 850px) {
+    .sort-container {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .sort-container select {
+        flex: 1;
+        max-width: 200px;
+    }
+}
