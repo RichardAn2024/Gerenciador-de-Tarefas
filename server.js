@@ -1,7 +1,9 @@
-// server.js - Versão com MÚLTIPLOS RESPONSÁVEIS, PESQUISA, RECUPERAÇÃO DE SENHA E NOME VOLCONTROL
+// server.js - Versão com MySQL (persistente)
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const db = require('./database');
+const bcrypt = require('bcryptjs');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
@@ -19,39 +21,192 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Servir arquivos estáticos da raiz
 app.use(express.static(__dirname));
 
 // ============================================================
-//  SIMULAÇÃO DE BANCO DE DADOS (EM MEMÓRIA)
-// ============================================================
-
-const ADMIN_USER = {
-    id: 1,
-    nome: 'Administrador',
-    email: 'admin@admin.com',
-    senha: 'admin123',
-    isAdmin: true,
-    status: 'aprovado'
-};
-
-let usuarios = [ADMIN_USER];
-let tarefas = [];
-let subtarefaIdCounter = 1;
-
-// ============================================================
-//  RECUPERAÇÃO DE SENHA - ARMAZENAR CÓDIGOS
+//  RECUPERAÇÃO DE SENHA - ARMAZENAR CÓDIGOS (em memória ainda)
 // ============================================================
 
 const codigosRecuperacao = {};
 
 // ============================================================
+//  FUNÇÕES AUXILIARES DO BANCO
+// ============================================================
+
+async function getUsuarioByEmail(email) {
+    const [rows] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
+    return rows[0] || null;
+}
+
+async function getUsuarioById(id) {
+    const [rows] = await db.query('SELECT * FROM usuarios WHERE id = ?', [id]);
+    return rows[0] || null;
+}
+
+async function getAllUsuarios() {
+    const [rows] = await db.query('SELECT id, nome, email, is_admin, status, criado_em FROM usuarios ORDER BY criado_em DESC');
+    return rows;
+}
+
+async function createUsuario(nome, email, senha) {
+    const salt = bcrypt.genSaltSync(10);
+    const senhaHash = bcrypt.hashSync(senha, salt);
+    const [result] = await db.query(
+        'INSERT INTO usuarios (nome, email, senha, is_admin, status) VALUES (?, ?, ?, ?, ?)',
+        [nome, email, senhaHash, 0, 'pendente']
+    );
+    return result.insertId;
+}
+
+async function updateUsuarioStatus(id, status) {
+    await db.query('UPDATE usuarios SET status = ? WHERE id = ?', [status, id]);
+}
+
+async function deleteUsuario(id) {
+    await db.query('DELETE FROM usuarios WHERE id = ?', [id]);
+}
+
+async function getTarefas() {
+    const [rows] = await db.query(`
+        SELECT t.*, 
+               u.nome as criador_nome,
+               GROUP_CONCAT(DISTINCT r.usuario_id) as responsaveis_ids,
+               GROUP_CONCAT(DISTINCT u2.nome) as responsaveis_nomes
+        FROM tarefas t
+        LEFT JOIN usuarios u ON t.usuario_id = u.id
+        LEFT JOIN tarefa_responsaveis r ON t.id = r.tarefa_id
+        LEFT JOIN usuarios u2 ON r.usuario_id = u2.id
+        WHERE t.tag != 'assistencia' OR t.tag IS NULL
+        GROUP BY t.id
+        ORDER BY t.data_criacao DESC
+    `);
+
+    // Buscar subtarefas para cada tarefa
+    for (const tarefa of rows) {
+        const [subtasks] = await db.query('SELECT * FROM subtarefas WHERE tarefa_id = ?', [tarefa.id]);
+        tarefa.subtarefas = subtasks;
+        tarefa.responsaveis_ids = tarefa.responsaveis_ids ? tarefa.responsaveis_ids.split(',').map(Number) : [];
+        tarefa.responsaveis_nomes = tarefa.responsaveis_nomes ? tarefa.responsaveis_nomes.split(',') : [];
+    }
+
+    return rows;
+}
+
+async function getTarefasAssistencia() {
+    const [rows] = await db.query(`
+        SELECT t.*, 
+               u.nome as criador_nome,
+               GROUP_CONCAT(DISTINCT r.usuario_id) as responsaveis_ids,
+               GROUP_CONCAT(DISTINCT u2.nome) as responsaveis_nomes
+        FROM tarefas t
+        LEFT JOIN usuarios u ON t.usuario_id = u.id
+        LEFT JOIN tarefa_responsaveis r ON t.id = r.tarefa_id
+        LEFT JOIN usuarios u2 ON r.usuario_id = u2.id
+        WHERE t.tag = 'assistencia'
+        GROUP BY t.id
+        ORDER BY t.data_criacao DESC
+    `);
+
+    for (const tarefa of rows) {
+        const [subtasks] = await db.query('SELECT * FROM subtarefas WHERE tarefa_id = ?', [tarefa.id]);
+        tarefa.subtarefas = subtasks;
+        tarefa.responsaveis_ids = tarefa.responsaveis_ids ? tarefa.responsaveis_ids.split(',').map(Number) : [];
+        tarefa.responsaveis_nomes = tarefa.responsaveis_nomes ? tarefa.responsaveis_nomes.split(',') : [];
+    }
+
+    return rows;
+}
+
+async function createTarefa(usuario_id, titulo, tag, subtarefas, responsaveis, prazo) {
+    const [result] = await db.query(
+        'INSERT INTO tarefas (usuario_id, titulo, tag, prazo) VALUES (?, ?, ?, ?)',
+        [usuario_id, titulo, tag || '', prazo || null]
+    );
+    const tarefaId = result.insertId;
+
+    // Inserir subtarefas
+    for (const sub of (subtarefas || [])) {
+        await db.query(
+            'INSERT INTO subtarefas (tarefa_id, texto, concluida) VALUES (?, ?, ?)',
+            [tarefaId, sub.texto, sub.concluida || 0]
+        );
+    }
+
+    // Inserir responsáveis
+    for (const respId of (responsaveis || [])) {
+        await db.query(
+            'INSERT INTO tarefa_responsaveis (tarefa_id, usuario_id) VALUES (?, ?)',
+            [tarefaId, respId]
+        );
+    }
+
+    return tarefaId;
+}
+
+async function updateTarefa(id, titulo, tag, subtarefas, responsaveis, prazo) {
+    await db.query(
+        'UPDATE tarefas SET titulo = ?, tag = ?, prazo = ? WHERE id = ?',
+        [titulo, tag || '', prazo || null, id]
+    );
+
+    // Remover subtarefas antigas
+    await db.query('DELETE FROM subtarefas WHERE tarefa_id = ?', [id]);
+
+    // Inserir novas subtarefas
+    for (const sub of (subtarefas || [])) {
+        await db.query(
+            'INSERT INTO subtarefas (tarefa_id, texto, concluida) VALUES (?, ?, ?)',
+            [id, sub.texto, sub.concluida || 0]
+        );
+    }
+
+    // Remover responsáveis antigos
+    await db.query('DELETE FROM tarefa_responsaveis WHERE tarefa_id = ?', [id]);
+
+    // Inserir novos responsáveis
+    for (const respId of (responsaveis || [])) {
+        await db.query(
+            'INSERT INTO tarefa_responsaveis (tarefa_id, usuario_id) VALUES (?, ?)',
+            [id, respId]
+        );
+    }
+}
+
+async function updateTarefaStatus(id, status) {
+    await db.query('UPDATE tarefas SET status = ? WHERE id = ?', [status, id]);
+}
+
+async function deleteTarefa(id) {
+    await db.query('DELETE FROM tarefas WHERE id = ?', [id]);
+}
+
+async function toggleSubtarefa(id, concluida) {
+    await db.query('UPDATE subtarefas SET concluida = ? WHERE id = ?', [concluida, id]);
+}
+
+async function getEstatisticas() {
+    const [usuarios] = await db.query('SELECT COUNT(*) as total FROM usuarios');
+    const [tarefas] = await db.query('SELECT COUNT(*) as total FROM tarefas');
+    const [subtarefas] = await db.query('SELECT COUNT(*) as total FROM subtarefas');
+    const [pendentes] = await db.query('SELECT COUNT(*) as total FROM usuarios WHERE status = "pendente"');
+    const [aprovados] = await db.query('SELECT COUNT(*) as total FROM usuarios WHERE status = "aprovado" OR is_admin = 1');
+    const [rejeitados] = await db.query('SELECT COUNT(*) as total FROM usuarios WHERE status = "rejeitado"');
+
+    return {
+        total_usuarios: usuarios[0].total,
+        usuarios_pendentes: pendentes[0].total,
+        usuarios_aprovados: aprovados[0].total,
+        usuarios_rejeitados: rejeitados[0].total,
+        total_tarefas: tarefas[0].total,
+        total_subtarefas: subtarefas[0].total
+    };
+}
+
+// ============================================================
 //  ROTAS DE AUTENTICAÇÃO
 // ============================================================
 
-// Login - VERIFICA SE USUÁRIO FOI APROVADO
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
     try {
         const { email, senha } = req.body;
         console.log(`🔐 Tentativa de login: ${email}`);
@@ -60,26 +215,26 @@ app.post('/api/login', (req, res) => {
             return res.status(400).json({ erro: 'Email e senha são obrigatórios' });
         }
 
-        const usuario = usuarios.find(u => u.email === email);
+        const usuario = await getUsuarioByEmail(email);
 
         if (!usuario) {
             return res.status(401).json({ erro: 'Email ou senha incorretos' });
         }
 
-        // VERIFICAR SE O USUÁRIO FOI APROVADO
         if (usuario.status === 'pendente') {
             return res.status(401).json({
-                erro: 'Aguardando aprovação do administrador. Você receberá um email quando for aprovado.'
+                erro: 'Aguardando aprovação do administrador.'
             });
         }
 
         if (usuario.status === 'rejeitado') {
             return res.status(401).json({
-                erro: 'Seu cadastro foi rejeitado pelo administrador. Entre em contato para mais informações.'
+                erro: 'Seu cadastro foi rejeitado.'
             });
         }
 
-        if (usuario.senha !== senha) {
+        const senhaValida = bcrypt.compareSync(senha, usuario.senha);
+        if (!senhaValida) {
             return res.status(401).json({ erro: 'Email ou senha incorretos' });
         }
 
@@ -91,7 +246,7 @@ app.post('/api/login', (req, res) => {
                 id: usuario.id,
                 nome: usuario.nome,
                 email: usuario.email,
-                isAdmin: usuario.isAdmin || false,
+                isAdmin: usuario.is_admin === 1,
                 status: usuario.status
             }
         });
@@ -101,8 +256,7 @@ app.post('/api/login', (req, res) => {
     }
 });
 
-// Cadastro - USUÁRIO FICA PENDENTE
-app.post('/api/cadastro', (req, res) => {
+app.post('/api/cadastro', async (req, res) => {
     try {
         const { nome, email, senha } = req.body;
 
@@ -114,23 +268,13 @@ app.post('/api/cadastro', (req, res) => {
             return res.status(400).json({ erro: 'Senha deve ter pelo menos 6 caracteres' });
         }
 
-        const usuarioExistente = usuarios.find(u => u.email === email);
+        const usuarioExistente = await getUsuarioByEmail(email);
         if (usuarioExistente) {
             return res.status(400).json({ erro: 'Email já cadastrado' });
         }
 
-        const novoUsuario = {
-            id: usuarios.length + 1,
-            nome: nome,
-            email: email,
-            senha: senha,
-            isAdmin: false,
-            status: 'pendente',
-            data_cadastro: new Date().toISOString()
-        };
-
-        usuarios.push(novoUsuario);
-        console.log(`📝 Novo cadastro PENDENTE: ${email} (ID: ${novoUsuario.id})`);
+        await createUsuario(nome, email, senha);
+        console.log(`📝 Novo cadastro PENDENTE: ${email}`);
 
         res.json({
             mensagem: 'Cadastro realizado com sucesso! Aguarde a aprovação do administrador.',
@@ -146,8 +290,7 @@ app.post('/api/cadastro', (req, res) => {
 //  ROTAS DE RECUPERAÇÃO DE SENHA
 // ============================================================
 
-// Solicitar código de recuperação
-app.post('/api/recuperar', (req, res) => {
+app.post('/api/recuperar', async (req, res) => {
     try {
         const { email } = req.body;
 
@@ -155,39 +298,32 @@ app.post('/api/recuperar', (req, res) => {
             return res.status(400).json({ erro: 'Email é obrigatório' });
         }
 
-        const usuario = usuarios.find(u => u.email === email);
+        const usuario = await getUsuarioByEmail(email);
 
         if (!usuario) {
             return res.status(404).json({ erro: 'Email não encontrado' });
         }
 
-        // Gerar código de 6 dígitos
         const codigo = Math.floor(100000 + Math.random() * 900000).toString();
-
-        // Armazenar com expiração de 15 minutos
         codigosRecuperacao[email] = {
             codigo: codigo,
-            expiraEm: Date.now() + 15 * 60 * 1000 // 15 minutos
+            expiraEm: Date.now() + 15 * 60 * 1000
         };
 
         console.log(`🔑 Código de recuperação para ${email}: ${codigo}`);
 
-        // Em produção, enviaria email. Aqui mostramos no console.
-        // O código também é retornado na resposta para facilitar testes
         res.json({
             mensagem: '📧 Código de recuperação enviado para seu email!',
-            codigo: codigo, // Remove em produção
+            codigo: codigo,
             email: email
         });
-
     } catch (error) {
         console.error('❌ Erro na recuperação:', error);
         res.status(500).json({ erro: 'Erro ao processar recuperação' });
     }
 });
 
-// Redefinir senha
-app.post('/api/resetar-senha', (req, res) => {
+app.post('/api/resetar-senha', async (req, res) => {
     try {
         const { email, codigo, novaSenha } = req.body;
 
@@ -199,40 +335,29 @@ app.post('/api/resetar-senha', (req, res) => {
             return res.status(400).json({ erro: 'A senha deve ter pelo menos 6 caracteres' });
         }
 
-        const usuario = usuarios.find(u => u.email === email);
-
+        const usuario = await getUsuarioByEmail(email);
         if (!usuario) {
             return res.status(404).json({ erro: 'Email não encontrado' });
         }
 
         const registro = codigosRecuperacao[email];
-
-        if (!registro) {
-            return res.status(400).json({ erro: 'Código inválido ou expirado. Solicite um novo.' });
-        }
-
-        if (registro.codigo !== codigo) {
-            return res.status(400).json({ erro: 'Código incorreto' });
+        if (!registro || registro.codigo !== codigo) {
+            return res.status(400).json({ erro: 'Código inválido' });
         }
 
         if (Date.now() > registro.expiraEm) {
             delete codigosRecuperacao[email];
-            return res.status(400).json({ erro: 'Código expirado. Solicite um novo.' });
+            return res.status(400).json({ erro: 'Código expirado' });
         }
 
-        // Atualizar senha
-        usuario.senha = novaSenha;
+        const salt = bcrypt.genSaltSync(10);
+        const senhaHash = bcrypt.hashSync(novaSenha, salt);
+        await db.query('UPDATE usuarios SET senha = ? WHERE email = ?', [senhaHash, email]);
 
-        // Remover código usado
         delete codigosRecuperacao[email];
-
         console.log(`🔐 Senha redefinida para ${email}`);
 
-        res.json({
-            mensagem: '✅ Senha redefinida com sucesso!',
-            email: email
-        });
-
+        res.json({ mensagem: '✅ Senha redefinida com sucesso!' });
     } catch (error) {
         console.error('❌ Erro ao redefinir senha:', error);
         res.status(500).json({ erro: 'Erro ao redefinir senha' });
@@ -243,17 +368,10 @@ app.post('/api/resetar-senha', (req, res) => {
 //  ROTAS DE USUÁRIOS
 // ============================================================
 
-// Listar todos os usuários (para admin)
-app.get('/api/usuarios', (req, res) => {
+app.get('/api/usuarios', async (req, res) => {
     try {
-        const usuariosList = usuarios.map(u => ({
-            id: u.id,
-            nome: u.nome,
-            email: u.email,
-            status: u.status || 'aprovado',
-            isAdmin: u.isAdmin || false
-        }));
-        res.json(usuariosList);
+        const usuarios = await getAllUsuarios();
+        res.json(usuarios);
     } catch (error) {
         console.error('❌ Erro ao listar usuários:', error);
         res.status(500).json({ erro: 'Erro ao carregar usuários' });
@@ -261,100 +379,48 @@ app.get('/api/usuarios', (req, res) => {
 });
 
 // ============================================================
-//  ROTAS DE ADMIN - GERENCIAR USUÁRIOS
+//  ROTAS DE ADMIN
 // ============================================================
 
-// Listar todos os usuários com detalhes para admin
-app.get('/api/admin/usuarios', (req, res) => {
+app.get('/api/admin/usuarios', async (req, res) => {
     try {
-        const usuariosList = usuarios.map(u => ({
-            id: u.id,
-            nome: u.nome,
-            email: u.email,
-            is_admin: u.isAdmin ? 1 : 0,
-            status: u.status || 'aprovado',
-            total_tarefas: tarefas.filter(t => {
-                const responsaveis = t.responsaveis || [];
-                return responsaveis.includes(u.id) || t.usuario_id === u.id;
-            }).length,
-            criado_em: u.data_cadastro || new Date().toISOString()
-        }));
-        res.json(usuariosList);
+        const usuarios = await getAllUsuarios();
+        res.json(usuarios);
     } catch (error) {
         console.error('❌ Erro ao listar usuários:', error);
         res.status(500).json({ erro: 'Erro ao carregar usuários' });
     }
 });
 
-// APROVAR USUÁRIO
-app.patch('/api/admin/usuarios/:id/aprovar', (req, res) => {
+app.patch('/api/admin/usuarios/:id/aprovar', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const usuario = usuarios.find(u => u.id === id);
-
-        if (!usuario) {
-            return res.status(404).json({ erro: 'Usuário não encontrado' });
-        }
-
-        if (usuario.isAdmin) {
-            return res.status(403).json({ erro: 'Administradores não precisam de aprovação' });
-        }
-
-        usuario.status = 'aprovado';
-        console.log(`✅ Usuário ${usuario.email} foi APROVADO!`);
-        res.json({
-            mensagem: `Usuário ${usuario.nome} aprovado com sucesso!`,
-            usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email, status: usuario.status }
-        });
+        await updateUsuarioStatus(id, 'aprovado');
+        console.log(`✅ Usuário ${id} APROVADO!`);
+        res.json({ mensagem: 'Usuário aprovado com sucesso!' });
     } catch (error) {
         console.error('❌ Erro ao aprovar usuário:', error);
         res.status(500).json({ erro: 'Erro ao aprovar usuário' });
     }
 });
 
-// REJEITAR USUÁRIO
-app.patch('/api/admin/usuarios/:id/rejeitar', (req, res) => {
+app.patch('/api/admin/usuarios/:id/rejeitar', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const usuario = usuarios.find(u => u.id === id);
-
-        if (!usuario) {
-            return res.status(404).json({ erro: 'Usuário não encontrado' });
-        }
-
-        if (usuario.isAdmin) {
-            return res.status(403).json({ erro: 'Não é possível rejeitar um administrador' });
-        }
-
-        usuario.status = 'rejeitado';
-        console.log(`❌ Usuário ${usuario.email} foi REJEITADO!`);
-        res.json({
-            mensagem: `Usuário ${usuario.nome} rejeitado.`,
-            usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email, status: usuario.status }
-        });
+        await updateUsuarioStatus(id, 'rejeitado');
+        console.log(`❌ Usuário ${id} REJEITADO!`);
+        res.json({ mensagem: 'Usuário rejeitado!' });
     } catch (error) {
         console.error('❌ Erro ao rejeitar usuário:', error);
         res.status(500).json({ erro: 'Erro ao rejeitar usuário' });
     }
 });
 
-// DELETAR USUÁRIO
-app.delete('/api/admin/usuarios/:id', (req, res) => {
+app.delete('/api/admin/usuarios/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const usuario = usuarios.find(u => u.id === id);
-
-        if (usuario && usuario.isAdmin) {
-            return res.status(403).json({ erro: 'Não é possível deletar o administrador' });
-        }
-
-        const index = usuarios.findIndex(u => u.id === id);
-        if (index === -1) {
-            return res.status(404).json({ erro: 'Usuário não encontrado' });
-        }
-
-        usuarios.splice(index, 1);
-        console.log(`🗑️ Usuário ${usuario ? usuario.email : id} deletado`);
+        await deleteUsuario(id);
+        console.log(`🗑️ Usuário ${id} deletado`);
         res.json({ mensagem: 'Usuário deletado com sucesso!' });
     } catch (error) {
         console.error('❌ Erro ao deletar usuário:', error);
@@ -363,142 +429,55 @@ app.delete('/api/admin/usuarios/:id', (req, res) => {
 });
 
 // ============================================================
-//  ROTAS DE TAREFAS - COM MÚLTIPLOS RESPONSÁVEIS
+//  ROTAS DE TAREFAS
 // ============================================================
 
-// Listar tarefas (exclui assistência)
-app.get('/api/tarefas', (req, res) => {
+app.get('/api/tarefas', async (req, res) => {
     try {
-        const tarefasFiltradas = tarefas
-            .filter(t => t.tag !== 'assistencia')
-            .map(t => {
-                // Buscar nomes dos responsáveis
-                const responsaveisIds = t.responsaveis || [];
-                const responsaveisNomes = responsaveisIds.map(id => {
-                    const usuario = usuarios.find(u => u.id === id);
-                    return usuario ? usuario.nome : null;
-                }).filter(n => n !== null);
-
-                const criador = usuarios.find(u => u.id === t.usuario_id);
-
-                return {
-                    ...t,
-                    responsaveis_ids: responsaveisIds,
-                    responsaveis_nomes: responsaveisNomes,
-                    criador_nome: criador ? criador.nome : 'Administrador',
-                    criador_id: t.usuario_id || 1
-                };
-            });
-
-        console.log(`📋 Carregando ${tarefasFiltradas.length} tarefas`);
-        res.json(tarefasFiltradas);
+        const tarefas = await getTarefas();
+        console.log(`📋 Carregando ${tarefas.length} tarefas`);
+        res.json(tarefas);
     } catch (error) {
         console.error('❌ Erro ao buscar tarefas:', error);
         res.status(500).json({ erro: 'Erro ao buscar tarefas' });
     }
 });
 
-// Listar tarefas de assistência
-app.get('/api/tarefas/assistencia', (req, res) => {
+app.get('/api/tarefas/assistencia', async (req, res) => {
     try {
-        const tarefasAssistencia = tarefas
-            .filter(t => t.tag === 'assistencia')
-            .map(t => {
-                const responsaveisIds = t.responsaveis || [];
-                const responsaveisNomes = responsaveisIds.map(id => {
-                    const usuario = usuarios.find(u => u.id === id);
-                    return usuario ? usuario.nome : null;
-                }).filter(n => n !== null);
-
-                const criador = usuarios.find(u => u.id === t.usuario_id);
-
-                return {
-                    ...t,
-                    responsaveis_ids: responsaveisIds,
-                    responsaveis_nomes: responsaveisNomes,
-                    criador_nome: criador ? criador.nome : 'Administrador',
-                    criador_id: t.usuario_id || 1
-                };
-            });
-
-        console.log(`🔧 Carregando ${tarefasAssistencia.length} tarefas de assistência`);
-        res.json(tarefasAssistencia);
+        const tarefas = await getTarefasAssistencia();
+        console.log(`🔧 Carregando ${tarefas.length} tarefas de assistência`);
+        res.json(tarefas);
     } catch (error) {
         console.error('❌ Erro ao buscar tarefas de assistência:', error);
-        res.status(500).json({ erro: 'Erro ao carregar tarefas de assistência' });
+        res.status(500).json({ erro: 'Erro ao carregar tarefas' });
     }
 });
 
-// Criar tarefa - COM MÚLTIPLOS RESPONSÁVEIS
-app.post('/api/tarefas', (req, res) => {
+app.post('/api/tarefas', async (req, res) => {
     try {
-        const { titulo, tag, subtarefas: subtarefasList, responsaveis, prazo } = req.body;
+        const { titulo, tag, subtarefas, responsaveis, prazo } = req.body;
 
         if (!titulo) {
             return res.status(400).json({ erro: 'Título é obrigatório' });
         }
 
-        const subtarefasComId = (subtarefasList || []).map(s => ({
-            id: subtarefaIdCounter++,
-            texto: s.texto,
-            concluida: s.concluida || 0
-        }));
-
-        const novaTarefa = {
-            id: tarefas.length + 1,
-            usuario_id: 1,
-            titulo: titulo,
-            tag: tag || '',
-            status: 'todo',
-            responsaveis: responsaveis || [], // ARRAY de IDs
-            prazo: prazo || null,
-            data_criacao: new Date().toISOString(),
-            subtarefas: subtarefasComId
-        };
-
-        tarefas.push(novaTarefa);
-        console.log(`✅ Tarefa criada: ${titulo} com ${novaTarefa.responsaveis.length} responsável(is)`);
-        res.json({
-            id: novaTarefa.id,
-            mensagem: 'Tarefa criada com sucesso!'
-        });
+        const id = await createTarefa(1, titulo, tag, subtarefas, responsaveis, prazo);
+        console.log(`✅ Tarefa criada: ${titulo}`);
+        res.json({ id, mensagem: 'Tarefa criada com sucesso!' });
     } catch (error) {
         console.error('❌ Erro ao criar tarefa:', error);
         res.status(500).json({ erro: 'Erro ao criar tarefa' });
     }
 });
 
-// Atualizar tarefa - COM MÚLTIPLOS RESPONSÁVEIS
-app.put('/api/tarefas/:id', (req, res) => {
+app.put('/api/tarefas/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const { titulo, tag, subtarefas: subtarefasList, responsaveis, prazo } = req.body;
-        const tarefa = tarefas.find(t => t.id === id);
+        const { titulo, tag, subtarefas, responsaveis, prazo } = req.body;
 
-        if (!tarefa) {
-            return res.status(404).json({ erro: 'Tarefa não encontrada' });
-        }
-
-        const subtarefasExistentes = tarefa.subtarefas || [];
-        const novasSubtarefas = (subtarefasList || []).map(s => {
-            const existente = subtarefasExistentes.find(e => e.texto === s.texto);
-            if (existente) {
-                return { ...existente, concluida: s.concluida || 0 };
-            }
-            return {
-                id: subtarefaIdCounter++,
-                texto: s.texto,
-                concluida: s.concluida || 0
-            };
-        });
-
-        tarefa.titulo = titulo || tarefa.titulo;
-        tarefa.tag = tag || tarefa.tag;
-        tarefa.responsaveis = responsaveis || []; // ARRAY de IDs
-        tarefa.prazo = prazo || tarefa.prazo;
-        tarefa.subtarefas = novasSubtarefas;
-
-        console.log(`✏️ Tarefa ${id} atualizada com ${tarefa.responsaveis.length} responsável(is)`);
+        await updateTarefa(id, titulo, tag, subtarefas, responsaveis, prazo);
+        console.log(`✏️ Tarefa ${id} atualizada`);
         res.json({ mensagem: 'Tarefa atualizada com sucesso!' });
     } catch (error) {
         console.error('❌ Erro ao atualizar tarefa:', error);
@@ -506,18 +485,12 @@ app.put('/api/tarefas/:id', (req, res) => {
     }
 });
 
-// Atualizar status da tarefa
-app.patch('/api/tarefas/:id/status', (req, res) => {
+app.patch('/api/tarefas/:id/status', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
         const { status } = req.body;
-        const tarefa = tarefas.find(t => t.id === id);
 
-        if (!tarefa) {
-            return res.status(404).json({ erro: 'Tarefa não encontrada' });
-        }
-
-        tarefa.status = status;
+        await updateTarefaStatus(id, status);
         res.json({ mensagem: 'Status atualizado com sucesso!' });
     } catch (error) {
         console.error('❌ Erro ao atualizar status:', error);
@@ -525,50 +498,23 @@ app.patch('/api/tarefas/:id/status', (req, res) => {
     }
 });
 
-// Alternar subtarefa
-app.patch('/api/subtarefas/:id', (req, res) => {
+app.patch('/api/subtarefas/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
         const { concluida } = req.body;
 
-        let subtarefaEncontrada = false;
-        for (const tarefa of tarefas) {
-            if (tarefa.subtarefas) {
-                const subtarefa = tarefa.subtarefas.find(s => s.id === id);
-                if (subtarefa) {
-                    subtarefa.concluida = concluida ? 1 : 0;
-                    subtarefaEncontrada = true;
-
-                    const todasConcluidas = tarefa.subtarefas.every(s => s.concluida === 1);
-                    if (todasConcluidas && tarefa.status !== 'done') {
-                        tarefa.status = 'done';
-                    }
-
-                    return res.json({ mensagem: 'Subtarefa atualizada!' });
-                }
-            }
-        }
-
-        if (!subtarefaEncontrada) {
-            return res.status(404).json({ erro: 'Subtarefa não encontrada' });
-        }
+        await toggleSubtarefa(id, concluida);
+        res.json({ mensagem: 'Subtarefa atualizada!' });
     } catch (error) {
         console.error('❌ Erro ao atualizar subtarefa:', error);
         res.status(500).json({ erro: 'Erro ao atualizar subtarefa' });
     }
 });
 
-// Deletar tarefa
-app.delete('/api/tarefas/:id', (req, res) => {
+app.delete('/api/tarefas/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const index = tarefas.findIndex(t => t.id === id);
-
-        if (index === -1) {
-            return res.status(404).json({ erro: 'Tarefa não encontrada' });
-        }
-
-        tarefas.splice(index, 1);
+        await deleteTarefa(id);
         res.json({ mensagem: 'Tarefa deletada com sucesso!' });
     } catch (error) {
         console.error('❌ Erro ao deletar tarefa:', error);
@@ -580,21 +526,10 @@ app.delete('/api/tarefas/:id', (req, res) => {
 //  ROTAS DE ADMIN - ESTATÍSTICAS
 // ============================================================
 
-app.get('/api/admin/estatisticas', (req, res) => {
+app.get('/api/admin/estatisticas', async (req, res) => {
     try {
-        const totalSubtarefas = tarefas.reduce((acc, t) => acc + (t.subtarefas ? t.subtarefas.length : 0), 0);
-        const pendentes = usuarios.filter(u => u.status === 'pendente').length;
-        const aprovados = usuarios.filter(u => u.status === 'aprovado' || u.isAdmin).length;
-        const rejeitados = usuarios.filter(u => u.status === 'rejeitado').length;
-
-        res.json({
-            total_usuarios: usuarios.length,
-            usuarios_pendentes: pendentes,
-            usuarios_aprovados: aprovados,
-            usuarios_rejeitados: rejeitados,
-            total_tarefas: tarefas.length,
-            total_subtarefas: totalSubtarefas
-        });
+        const stats = await getEstatisticas();
+        res.json(stats);
     } catch (error) {
         console.error('❌ Erro ao carregar estatísticas:', error);
         res.status(500).json({ erro: 'Erro ao carregar estatísticas' });
@@ -625,7 +560,6 @@ app.get('/assistencia.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'assistencia.html'));
 });
 
-// ROTAS - Recuperação de senha
 app.get('/recuperar.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'recuperar.html'));
 });
@@ -638,19 +572,23 @@ app.get('/resetar.html', (req, res) => {
 //  HEALTH CHECK
 // ============================================================
 
-app.get('/api/health', (req, res) => {
-    const pendentes = usuarios.filter(u => u.status === 'pendente').length;
-    const codigosAtivos = Object.keys(codigosRecuperacao).length;
-    res.json({
-        status: 'ok',
-        mensagem: 'VolControl Server rodando no Railway!',
-        porta: PORT,
-        timestamp: new Date().toISOString(),
-        usuarios: usuarios.length,
-        usuarios_pendentes: pendentes,
-        tarefas: tarefas.length,
-        codigos_recuperacao_ativos: codigosAtivos
-    });
+app.get('/api/health', async (req, res) => {
+    try {
+        const [result] = await db.query('SELECT 1+1 as test');
+        res.json({
+            status: 'ok',
+            mensagem: 'VolControl Server com MySQL!',
+            porta: PORT,
+            timestamp: new Date().toISOString(),
+            db: 'conectado'
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'erro',
+            mensagem: 'Erro na conexão com o banco',
+            erro: error.message
+        });
+    }
 });
 
 // ============================================================
@@ -672,6 +610,5 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 VolControl Server rodando na porta ${PORT}`);
     console.log(`📋 API Health: /api/health`);
     console.log(`👤 Admin: admin@admin.com / admin123`);
-    console.log(`📊 Usuários: ${usuarios.length} (${usuarios.filter(u => u.status === 'pendente').length} pendentes)`);
-    console.log(`🔑 Sistema de recuperação de senha ativo`);
+    console.log(`🗄️  Usando MySQL como banco de dados!`);
 });
