@@ -1,6 +1,6 @@
 /* ============================================================
    assistencia.js - Lógica da página de Assistência Técnica
-   COM PAGINAÇÃO, PESQUISA E MÚLTIPLOS RESPONSÁVEIS
+   COM ORDENAÇÃO, PAGINAÇÃO, PESQUISA E MÚLTIPLOS RESPONSÁVEIS
    ============================================================ */
 
 // --- Estado ---
@@ -8,6 +8,7 @@ let tarefas = [];
 let currentFilter = 'all';
 let currentResponsavelFilter = 'all';
 let currentSearchTerm = '';
+let currentSort = 'criacao_desc'; // NOVO
 let editingTaskId = null;
 let usuariosDisponiveis = [];
 let usuarioLogado = null;
@@ -26,6 +27,9 @@ const userName = document.getElementById('userName');
 // --- Pesquisa ---
 const searchInput = document.getElementById('searchInput');
 const clearSearchBtn = document.getElementById('clearSearchBtn');
+
+// --- Ordenação ---
+const sortBy = document.getElementById('sortBy');
 
 // --- Modal de Criação ---
 const createModal = document.getElementById('createModal');
@@ -166,7 +170,43 @@ async function carregarTarefasDoServidor() {
 }
 
 // ============================================================
-//  RENDERIZAÇÃO - COM PAGINAÇÃO
+//  ORDENAÇÃO
+// ============================================================
+
+function sortTasks(tasks) {
+    const sortFunctions = {
+        'criacao_asc': (a, b) => new Date(a.data_criacao) - new Date(b.data_criacao),
+        'criacao_desc': (a, b) => new Date(b.data_criacao) - new Date(a.data_criacao),
+        'prazo_asc': (a, b) => {
+            if (!a.prazo && !b.prazo) return 0;
+            if (!a.prazo) return 1;
+            if (!b.prazo) return -1;
+            return new Date(a.prazo) - new Date(b.prazo);
+        },
+        'prazo_desc': (a, b) => {
+            if (!a.prazo && !b.prazo) return 0;
+            if (!a.prazo) return 1;
+            if (!b.prazo) return -1;
+            return new Date(b.prazo) - new Date(a.prazo);
+        },
+        'titulo_asc': (a, b) => a.titulo.localeCompare(b.titulo),
+        'titulo_desc': (a, b) => b.titulo.localeCompare(a.titulo),
+        'status_asc': (a, b) => {
+            const order = { 'todo': 0, 'doing': 1, 'done': 2 };
+            return (order[a.status] || 0) - (order[b.status] || 0);
+        },
+        'status_desc': (a, b) => {
+            const order = { 'todo': 0, 'doing': 1, 'done': 2 };
+            return (order[b.status] || 0) - (order[a.status] || 0);
+        }
+    };
+
+    const sortFn = sortFunctions[currentSort] || sortFunctions['criacao_desc'];
+    return [...tasks].sort(sortFn);
+}
+
+// ============================================================
+//  RENDERIZAÇÃO - COM ORDENAÇÃO E PAGINAÇÃO
 // ============================================================
 
 function render() {
@@ -189,6 +229,9 @@ function render() {
             t.titulo.toLowerCase().includes(term)
         );
     }
+
+    // ORDENAÇÃO
+    filtered = sortTasks(filtered);
 
     const paginatedTasks = getPaginatedTasks(filtered);
 
@@ -953,7 +996,7 @@ if (filterResponsavel) {
 }
 
 // ============================================================
-//  CONFIGURAR EVENTOS - COM PAGINAÇÃO
+//  CONFIGURAR EVENTOS - COM ORDENAÇÃO E PAGINAÇÃO
 // ============================================================
 
 function configurarEventos() {
@@ -1021,6 +1064,15 @@ function configurarEventos() {
         render();
         searchInput.focus();
     });
+
+    // --- NOVO: Ordenação ---
+    if (sortBy) {
+        sortBy.addEventListener('change', () => {
+            currentSort = sortBy.value;
+            currentPage = 1;
+            render();
+        });
+    }
 
     // --- Paginação ---
     const prevBtn = document.getElementById('prevPageBtn');

@@ -71,6 +71,21 @@
                 </select>
             </div>
 
+            <!-- ===== ORDENAÇÃO ===== -->
+            <div class="sort-container">
+                <label for="sortBy">📊 Ordenar por:</label>
+                <select id="sortBy">
+                    <option value="criacao_asc">📅 Mais antigas</option>
+                    <option value="criacao_desc" selected>📅 Mais recentes</option>
+                    <option value="prazo_asc">⏰ Prazo mais próximo</option>
+                    <option value="prazo_desc">⏰ Prazo mais distante</option>
+                    <option value="titulo_asc">🔤 A-Z</option>
+                    <option value="titulo_desc">🔤 Z-A</option>
+                    <option value="status_asc">📋 Status (A-Fazer → Concluído)</option>
+                    <option value="status_desc">📋 Status (Concluído → A-Fazer)</option>
+                </select>
+            </div>
+
             <button class="btn btn-outline" id="clearAllBtn">🗑️ Limpar tudo</button>
         </div>
 
