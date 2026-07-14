@@ -1210,3 +1210,106 @@ body {
     padding: 4px 10px;
     font-size: 11px;
 }
+
+/* style.css - Adicione no final do arquivo */
+
+/* ============================================================
+   SELECT MÚLTIPLO - RESPONSÁVEIS
+   ============================================================ */
+
+select[multiple] {
+    padding: 8px 12px;
+    border: 1.5px solid #e1e4e8;
+    border-radius: 8px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+    transition: 0.2s;
+    min-height: 80px !important;
+    height: auto !important;
+    width: 100%;
+}
+
+select[multiple]:focus {
+    outline: none;
+    border-color: #F57C00;
+    box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.15);
+}
+
+select[multiple] option {
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+select[multiple] option:checked {
+    background: #F57C00 linear-gradient(0deg, #F57C00 0%, #F57C00 100%);
+    color: white;
+}
+
+select[multiple] option:hover {
+    background: #fff3e0;
+}
+
+/* style.css - Adicione no final do arquivo */
+
+/* ============================================================
+   PESQUISA POR TÍTULO
+   ============================================================ */
+
+.search-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    max-width: 350px;
+}
+
+.search-input {
+    padding: 8px 14px;
+    border: 1.5px solid #e1e4e8;
+    border-radius: 8px;
+    font-size: 14px;
+    width: 100%;
+    transition: 0.3s ease;
+    background: white;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #F57C00;
+    box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.15);
+}
+
+.search-input::placeholder {
+    color: #8c929a;
+}
+
+#clearSearchBtn {
+    padding: 6px 12px;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+/* Responsividade da pesquisa */
+@media (max-width: 850px) {
+    .search-container {
+        max-width: 100%;
+        width: 100%;
+    }
+}
+
+@media (max-width: 700px) {
+    .search-container {
+        flex-wrap: wrap;
+    }
+
+    .search-input {
+        flex: 1;
+        min-width: 120px;
+    }
+
+    #clearSearchBtn {
+        flex-shrink: 0;
+    }
+}

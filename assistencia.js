@@ -1,12 +1,14 @@
 /* ============================================================
    assistencia.js - Lógica da página de Assistência Técnica
    Filtra apenas tarefas com tag 'assistencia'
+   COM PESQUISA POR TÍTULO E MÚLTIPLOS RESPONSÁVEIS
    ============================================================ */
 
 // --- Estado ---
 let tarefas = [];
 let currentFilter = 'all';
 let currentResponsavelFilter = 'all';
+let currentSearchTerm = ''; // NOVO: termo de pesquisa
 let editingTaskId = null;
 let usuariosDisponiveis = [];
 let usuarioLogado = null;
@@ -17,11 +19,15 @@ const clearAllBtn = document.getElementById('clearAllBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 const userName = document.getElementById('userName');
 
+// --- Pesquisa ---
+const searchInput = document.getElementById('searchInput');
+const clearSearchBtn = document.getElementById('clearSearchBtn');
+
 // --- Modal de Criação ---
 const createModal = document.getElementById('createModal');
 const createTitle = document.getElementById('createTitle');
 const createTag = document.getElementById('createTag');
-const createResponsavel = document.getElementById('createResponsavel');
+const createResponsaveis = document.getElementById('createResponsaveis');
 const createPrazo = document.getElementById('createPrazo');
 const subtaskList = document.getElementById('subtaskList');
 const addSubtaskBtn = document.getElementById('addSubtaskBtn');
@@ -33,7 +39,7 @@ const closeCreateModalBtn = document.getElementById('closeCreateModalBtn');
 const editModal = document.getElementById('editModal');
 const editTitle = document.getElementById('editTitle');
 const editTag = document.getElementById('editTag');
-const editResponsavel = document.getElementById('editResponsavel');
+const editResponsaveis = document.getElementById('editResponsaveis');
 const editPrazo = document.getElementById('editPrazo');
 const editSubtaskList = document.getElementById('editSubtaskList');
 const addEditSubtaskBtn = document.getElementById('addEditSubtaskBtn');
@@ -84,8 +90,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function carregarUsuarios() {
     try {
         usuariosDisponiveis = await listarUsuarios();
-        popularSelectResponsaveis(createResponsavel);
-        popularSelectResponsaveis(editResponsavel);
+        popularSelectResponsaveis(createResponsaveis);
+        popularSelectResponsaveis(editResponsaveis);
         popularFilterResponsavel();
     } catch (error) {
         console.error('Erro ao carregar usuários:', error);
@@ -156,24 +162,40 @@ async function carregarTarefasDoServidor() {
 }
 
 // ============================================================
-//  RENDERIZAÇÃO
+//  RENDERIZAÇÃO - COM FILTRO POR TÍTULO
 // ============================================================
 
 function render() {
     let filtered = tarefas;
+
+    // Filtrar por status
     if (currentFilter !== 'all') {
-        filtered = tarefas.filter(t => t.status === currentFilter);
+        filtered = filtered.filter(t => t.status === currentFilter);
     }
 
+    // Filtrar por responsável
     if (currentResponsavelFilter !== 'all') {
-        filtered = filtered.filter(t => t.responsavel_id == currentResponsavelFilter);
+        filtered = filtered.filter(t => {
+            const responsaveis = t.responsaveis_ids || [];
+            return responsaveis.includes(parseInt(currentResponsavelFilter));
+        });
     }
 
+    // NOVO: Filtrar por termo de pesquisa (título)
+    if (currentSearchTerm.trim() !== '') {
+        const term = currentSearchTerm.toLowerCase().trim();
+        filtered = filtered.filter(t =>
+            t.titulo.toLowerCase().includes(term)
+        );
+    }
+
+    // Limpar listas
     for (const status of ['todo', 'doing', 'done']) {
         const list = document.getElementById(statusMap[status].listId);
         list.innerHTML = '';
     }
 
+    // Preencher colunas
     for (const status of ['todo', 'doing', 'done']) {
         const list = document.getElementById(statusMap[status].listId);
         const tasksInStatus = filtered.filter(t => t.status === status);
@@ -181,7 +203,13 @@ function render() {
         if (tasksInStatus.length === 0) {
             const empty = document.createElement('div');
             empty.className = 'empty-state';
-            empty.textContent = 'Nenhuma tarefa de assistência aqui';
+
+            // Mensagem personalizada se houver pesquisa
+            if (currentSearchTerm.trim() !== '') {
+                empty.textContent = `Nenhuma tarefa de assistência encontrada para "${currentSearchTerm}"`;
+            } else {
+                empty.textContent = 'Nenhuma tarefa de assistência aqui';
+            }
             list.appendChild(empty);
             continue;
         }
@@ -227,6 +255,7 @@ function createTaskCard(task) {
     }
     card.appendChild(title);
 
+    // Criador
     if (task.criador_nome) {
         const criadorEl = document.createElement('div');
         criadorEl.className = 'task-criador';
@@ -246,24 +275,33 @@ function createTaskCard(task) {
         card.appendChild(criadorEl);
     }
 
-    if (task.responsavel_nome) {
+    // Responsáveis (MÚLTIPLOS)
+    if (task.responsaveis_nomes && task.responsaveis_nomes.length > 0) {
         const responsavelEl = document.createElement('div');
         responsavelEl.className = 'task-responsavel';
-        const isEu = usuarioLogado && task.responsavel_id === usuarioLogado.id;
-        const texto = isEu ? `Eu (${task.responsavel_nome})` : task.responsavel_nome;
-        responsavelEl.innerHTML = `👤 <strong>Responsável:</strong> ${texto}`;
-        if (isEu) {
-            responsavelEl.style.background = '#e3f2fd';
-            responsavelEl.style.border = '1px solid #2196F3';
-        }
+
+        const nomes = task.responsaveis_nomes.map(nome => {
+            const isEu = usuarioLogado && task.responsaveis_ids.includes(usuarioLogado.id);
+            return isEu ? `Eu (${nome})` : nome;
+        }).join(', ');
+
+        responsavelEl.innerHTML = `👤 <strong>Responsáveis:</strong> ${nomes}`;
+        responsavelEl.style.background = '#e3f2fd';
+        responsavelEl.style.border = '1px solid #2196F3';
+        responsavelEl.style.padding = '4px 10px';
+        responsavelEl.style.borderRadius = '12px';
+        responsavelEl.style.display = 'inline-block';
+        responsavelEl.style.marginBottom = '4px';
         card.appendChild(responsavelEl);
     }
 
+    // Data de criação
     const dateEl = document.createElement('div');
     dateEl.className = 'task-date';
     dateEl.innerHTML = `📅 Criado: ${formatarData(task.data_criacao)}`;
     card.appendChild(dateEl);
 
+    // Data de prazo
     if (task.prazo) {
         const prazoEl = document.createElement('div');
         prazoEl.className = 'task-date task-prazo';
@@ -281,6 +319,7 @@ function createTaskCard(task) {
         card.appendChild(prazoEl);
     }
 
+    // Subtarefas
     const subtasksEl = document.createElement('div');
     subtasksEl.className = 'task-subtasks';
     if (task.subtarefas && task.subtarefas.length > 0) {
@@ -315,6 +354,7 @@ function createTaskCard(task) {
         card.appendChild(subtasksEl);
     }
 
+    // Meta
     const meta = document.createElement('div');
     meta.className = 'task-meta';
 
@@ -515,7 +555,7 @@ async function verificarEAtualizarStatusTarefa(taskId) {
 function openCreateModal() {
     createTitle.value = '';
     createTag.value = 'assistencia';
-    createResponsavel.value = '';
+    Array.from(createResponsaveis.options).forEach(opt => opt.selected = false);
     createPrazo.value = '';
     subtaskList.innerHTML = '';
     createModal.classList.add('active');
@@ -526,7 +566,7 @@ function closeCreateModal() {
     createModal.classList.remove('active');
     createTitle.value = '';
     createTag.value = 'assistencia';
-    createResponsavel.value = '';
+    Array.from(createResponsaveis.options).forEach(opt => opt.selected = false);
     createPrazo.value = '';
     subtaskList.innerHTML = '';
 }
@@ -626,7 +666,7 @@ function getEditSubtasks() {
 }
 
 // ============================================================
-//  CRIAR TAREFA
+//  CRIAR TAREFA - COM MÚLTIPLOS RESPONSÁVEIS
 // ============================================================
 
 async function createTask() {
@@ -637,12 +677,14 @@ async function createTask() {
     }
 
     const tag = 'assistencia';
-    const responsavel_id = createResponsavel.value || null;
+    const responsaveis = Array.from(createResponsaveis.selectedOptions)
+        .map(opt => parseInt(opt.value))
+        .filter(id => !isNaN(id) && id > 0);
     const prazo = createPrazo.value || null;
     const subtarefas = getSubtasksFromContainer(subtaskList);
 
     try {
-        await criarTarefa(titulo, tag, subtarefas, responsavel_id, prazo);
+        await criarTarefa(titulo, tag, subtarefas, responsaveis, prazo);
         await carregarTarefasDoServidor();
         closeCreateModal();
         render();
@@ -652,7 +694,7 @@ async function createTask() {
 }
 
 // ============================================================
-//  EDIÇÃO DE TAREFAS
+//  EDIÇÃO DE TAREFAS - COM MÚLTIPLOS RESPONSÁVEIS
 // ============================================================
 
 function openEditModal(taskId) {
@@ -662,7 +704,12 @@ function openEditModal(taskId) {
     editingTaskId = taskId;
     editTitle.value = task.titulo;
     editTag.value = task.tag || 'assistencia';
-    editResponsavel.value = task.responsavel_id || '';
+
+    const responsaveisIds = task.responsaveis_ids || [];
+    Array.from(editResponsaveis.options).forEach(opt => {
+        opt.selected = responsaveisIds.includes(parseInt(opt.value));
+    });
+
     editPrazo.value = task.prazo || '';
     loadSubtasksIntoContainer(editSubtaskList, task.subtarefas || []);
     editModal.classList.add('active');
@@ -674,7 +721,7 @@ function closeEditModal() {
     editingTaskId = null;
     editTitle.value = '';
     editTag.value = 'assistencia';
-    editResponsavel.value = '';
+    Array.from(editResponsaveis.options).forEach(opt => opt.selected = false);
     editPrazo.value = '';
     editSubtaskList.innerHTML = '';
 }
@@ -689,12 +736,14 @@ async function salvarEdicaoComVerificacao() {
     }
 
     const tag = 'assistencia';
-    const responsavel_id = editResponsavel.value || null;
+    const responsaveis = Array.from(editResponsaveis.selectedOptions)
+        .map(opt => parseInt(opt.value))
+        .filter(id => !isNaN(id) && id > 0);
     const prazo = editPrazo.value || null;
     const subtarefas = getEditSubtasks();
 
     try {
-        await atualizarTarefa(editingTaskId, titulo, tag, subtarefas, responsavel_id, prazo);
+        await atualizarTarefa(editingTaskId, titulo, tag, subtarefas, responsaveis, prazo);
         await carregarTarefasDoServidor();
         closeEditModal();
         render();
@@ -819,10 +868,11 @@ if (filterResponsavel) {
 }
 
 // ============================================================
-//  CONFIGURAR EVENTOS
+//  CONFIGURAR EVENTOS - COM PESQUISA
 // ============================================================
 
 function configurarEventos() {
+    // --- Criação ---
     openCreateBtn.addEventListener('click', openCreateModal);
     saveCreateBtn.addEventListener('click', createTask);
     cancelCreateBtn.addEventListener('click', closeCreateModal);
@@ -837,6 +887,7 @@ function configurarEventos() {
         addSubtaskInput(subtaskList);
     });
 
+    // --- Edição ---
     saveEditBtn.addEventListener('click', salvarEdicaoComVerificacao);
     cancelEditBtn.addEventListener('click', closeEditModal);
     closeModalBtn.addEventListener('click', closeEditModal);
@@ -850,14 +901,17 @@ function configurarEventos() {
         addSubtaskInput(editSubtaskList);
     });
 
+    // --- Confirmação ---
     cancelConfirmBtn.addEventListener('click', closeConfirmModal);
     closeConfirmBtn.addEventListener('click', closeConfirmModal);
     confirmModal.addEventListener('click', (e) => {
         if (e.target === confirmModal) closeConfirmModal();
     });
 
+    // --- Limpar tudo ---
     clearAllBtn.addEventListener('click', clearAllTasks);
 
+    // --- Logout ---
     logoutBtn.addEventListener('click', () => {
         confirmTitle.textContent = '🚪 Sair';
         confirmMessage.textContent = 'Tem certeza que deseja sair?';
@@ -868,6 +922,21 @@ function configurarEventos() {
         };
     });
 
+    // --- NOVO: Pesquisa por título ---
+    searchInput.addEventListener('input', (e) => {
+        currentSearchTerm = e.target.value;
+        render();
+    });
+
+    // --- NOVO: Limpar pesquisa ---
+    clearSearchBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        currentSearchTerm = '';
+        render();
+        searchInput.focus();
+    });
+
+    // --- Fechar com ESC ---
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if (createModal.classList.contains('active')) closeCreateModal();

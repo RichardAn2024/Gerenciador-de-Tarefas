@@ -55,6 +55,12 @@
         <div class="toolbar">
             <button class="btn btn-primary" id="openCreateBtn">➕ Nova Tarefa</button>
 
+            <!-- NOVO: Campo de Pesquisa -->
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="🔍 Pesquisar por título..." class="search-input" />
+                <button class="btn btn-outline btn-sm" id="clearSearchBtn">✕ Limpar</button>
+            </div>
+
             <div class="filter-group">
                 <button class="filter-btn active" data-filter="all">Todas</button>
                 <button class="filter-btn" data-filter="todo">A fazer</button>
@@ -118,10 +124,12 @@
                     <option value="tranquilo">🔵 Tranquilo</option>
                 </select>
 
-                <label for="createResponsavel">👤 Responsável:</label>
-                <select id="createResponsavel">
-                    <option value="">Selecione um responsável...</option>
+                <label for="createResponsaveis">👤 Responsáveis (selecione um ou mais):</label>
+                <select id="createResponsaveis" multiple size="3" style="height: auto; min-height: 80px;">
+                    <option value="">Selecione os responsáveis...</option>
                 </select>
+                <small style="color: #6b6f76; font-size: 12px; display: block; margin-top: 4px;">Segure Ctrl (Windows)
+                    ou Cmd (Mac) para selecionar múltiplos</small>
 
                 <label for="createPrazo">📅 Data de Prazo:</label>
                 <input type="date" id="createPrazo" />
@@ -159,10 +167,12 @@
                     <option value="tranquilo">🔵 Tranquilo</option>
                 </select>
 
-                <label for="editResponsavel">👤 Responsável:</label>
-                <select id="editResponsavel">
-                    <option value="">Selecione um responsável...</option>
+                <label for="editResponsaveis">👤 Responsáveis (selecione um ou mais):</label>
+                <select id="editResponsaveis" multiple size="3" style="height: auto; min-height: 80px;">
+                    <option value="">Selecione os responsáveis...</option>
                 </select>
+                <small style="color: #6b6f76; font-size: 12px; display: block; margin-top: 4px;">Segure Ctrl (Windows)
+                    ou Cmd (Mac) para selecionar múltiplos</small>
 
                 <label for="editPrazo">📅 Data de Prazo:</label>
                 <input type="date" id="editPrazo" />

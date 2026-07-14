@@ -1,11 +1,12 @@
 /* ============================================================
-   script.js - Lógica completa do Dashboard (COM PRAZO E FILTRO)
+   script.js - Lógica completa do Dashboard (COM PESQUISA POR TÍTULO)
    ============================================================ */
 
 // --- Estado ---
 let tarefas = [];
 let currentFilter = 'all';
 let currentResponsavelFilter = 'all';
+let currentSearchTerm = ''; // NOVO: termo de pesquisa
 let editingTaskId = null;
 let usuariosDisponiveis = [];
 let usuarioLogado = null;
@@ -17,11 +18,15 @@ const logoutBtn = document.getElementById('logoutBtn');
 const userName = document.getElementById('userName');
 const adminLink = document.getElementById('adminLink');
 
+// --- Pesquisa ---
+const searchInput = document.getElementById('searchInput');
+const clearSearchBtn = document.getElementById('clearSearchBtn');
+
 // --- Modal de Criação ---
 const createModal = document.getElementById('createModal');
 const createTitle = document.getElementById('createTitle');
 const createTag = document.getElementById('createTag');
-const createResponsavel = document.getElementById('createResponsavel');
+const createResponsaveis = document.getElementById('createResponsaveis');
 const createPrazo = document.getElementById('createPrazo');
 const subtaskList = document.getElementById('subtaskList');
 const addSubtaskBtn = document.getElementById('addSubtaskBtn');
@@ -33,7 +38,7 @@ const closeCreateModalBtn = document.getElementById('closeCreateModalBtn');
 const editModal = document.getElementById('editModal');
 const editTitle = document.getElementById('editTitle');
 const editTag = document.getElementById('editTag');
-const editResponsavel = document.getElementById('editResponsavel');
+const editResponsaveis = document.getElementById('editResponsaveis');
 const editPrazo = document.getElementById('editPrazo');
 const editSubtaskList = document.getElementById('editSubtaskList');
 const addEditSubtaskBtn = document.getElementById('addEditSubtaskBtn');
@@ -87,8 +92,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function carregarUsuarios() {
     try {
         usuariosDisponiveis = await listarUsuarios();
-        popularSelectResponsaveis(createResponsavel);
-        popularSelectResponsaveis(editResponsavel);
+        popularSelectResponsaveis(createResponsaveis);
+        popularSelectResponsaveis(editResponsaveis);
         popularFilterResponsavel();
     } catch (error) {
         console.error('Erro ao carregar usuários:', error);
@@ -122,12 +127,10 @@ function popularSelectResponsaveis(select) {
 function popularFilterResponsavel() {
     if (!filterResponsavel) return;
 
-    // Limpar opções (manter a primeira)
     while (filterResponsavel.options.length > 1) {
         filterResponsavel.remove(1);
     }
 
-    // Primeiro o próprio usuário
     if (usuarioLogado) {
         const optionEu = document.createElement('option');
         optionEu.value = usuarioLogado.id;
@@ -137,7 +140,6 @@ function popularFilterResponsavel() {
         filterResponsavel.appendChild(optionEu);
     }
 
-    // Depois os outros
     usuariosDisponiveis.forEach(usuario => {
         if (usuarioLogado && usuario.id === usuarioLogado.id) return;
         const option = document.createElement('option');
@@ -162,19 +164,31 @@ async function carregarTarefasDoServidor() {
 }
 
 // ============================================================
-//  RENDERIZAÇÃO
+//  RENDERIZAÇÃO - COM FILTRO POR TÍTULO
 // ============================================================
 
 function render() {
-    // Filtrar por status
     let filtered = tarefas;
+
+    // Filtrar por status
     if (currentFilter !== 'all') {
-        filtered = tarefas.filter(t => t.status === currentFilter);
+        filtered = filtered.filter(t => t.status === currentFilter);
     }
 
     // Filtrar por responsável
     if (currentResponsavelFilter !== 'all') {
-        filtered = filtered.filter(t => t.responsavel_id == currentResponsavelFilter);
+        filtered = filtered.filter(t => {
+            const responsaveis = t.responsaveis_ids || [];
+            return responsaveis.includes(parseInt(currentResponsavelFilter));
+        });
+    }
+
+    // NOVO: Filtrar por termo de pesquisa (título)
+    if (currentSearchTerm.trim() !== '') {
+        const term = currentSearchTerm.toLowerCase().trim();
+        filtered = filtered.filter(t =>
+            t.titulo.toLowerCase().includes(term)
+        );
     }
 
     // Limpar listas
@@ -191,7 +205,13 @@ function render() {
         if (tasksInStatus.length === 0) {
             const empty = document.createElement('div');
             empty.className = 'empty-state';
-            empty.textContent = 'Nenhuma tarefa aqui';
+
+            // Mensagem personalizada se houver pesquisa
+            if (currentSearchTerm.trim() !== '') {
+                empty.textContent = `Nenhuma tarefa encontrada para "${currentSearchTerm}"`;
+            } else {
+                empty.textContent = 'Nenhuma tarefa aqui';
+            }
             list.appendChild(empty);
             continue;
         }
@@ -223,14 +243,12 @@ function createTaskCard(task) {
     };
     card.style.borderLeftColor = borderColors[task.status] || '#F57C00';
 
-    // Verificar se está atrasada
     const isOverdue = task.prazo && task.status !== 'done' && new Date(task.prazo) < new Date();
     if (isOverdue) {
         card.style.borderLeftColor = '#ff4d4f';
         card.style.borderLeftWidth = '6px';
     }
 
-    // Título
     const title = document.createElement('div');
     title.className = 'task-title';
     title.textContent = task.titulo;
@@ -259,18 +277,23 @@ function createTaskCard(task) {
         card.appendChild(criadorEl);
     }
 
-    // Responsável
-    if (task.responsavel_nome) {
+    // Responsáveis (MÚLTIPLOS)
+    if (task.responsaveis_nomes && task.responsaveis_nomes.length > 0) {
         const responsavelEl = document.createElement('div');
         responsavelEl.className = 'task-responsavel';
-        const isEu = usuarioLogado && task.responsavel_id === usuarioLogado.id;
-        const icone = isEu ? '👤' : '👤';
-        const texto = isEu ? `Eu (${task.responsavel_nome})` : task.responsavel_nome;
-        responsavelEl.innerHTML = `${icone} <strong>Responsável:</strong> ${texto}`;
-        if (isEu) {
-            responsavelEl.style.background = '#fff3e0';
-            responsavelEl.style.border = '1px solid #F57C00';
-        }
+
+        const nomes = task.responsaveis_nomes.map(nome => {
+            const isEu = usuarioLogado && task.responsaveis_ids.includes(usuarioLogado.id);
+            return isEu ? `Eu (${nome})` : nome;
+        }).join(', ');
+
+        responsavelEl.innerHTML = `👤 <strong>Responsáveis:</strong> ${nomes}`;
+        responsavelEl.style.background = '#fff3e0';
+        responsavelEl.style.border = '1px solid #F57C00';
+        responsavelEl.style.padding = '4px 10px';
+        responsavelEl.style.borderRadius = '12px';
+        responsavelEl.style.display = 'inline-block';
+        responsavelEl.style.marginBottom = '4px';
         card.appendChild(responsavelEl);
     }
 
@@ -280,7 +303,7 @@ function createTaskCard(task) {
     dateEl.innerHTML = `📅 Criado: ${formatarData(task.data_criacao)}`;
     card.appendChild(dateEl);
 
-    // Data de prazo (NOVO)
+    // Data de prazo
     if (task.prazo) {
         const prazoEl = document.createElement('div');
         prazoEl.className = 'task-date task-prazo';
@@ -398,7 +421,6 @@ function createTaskCard(task) {
     meta.appendChild(actions);
     card.appendChild(meta);
 
-    // Drag & Drop
     card.addEventListener('dragstart', handleDragStart);
     card.addEventListener('dragend', handleDragEnd);
 
@@ -533,7 +555,7 @@ async function toggleSubtask(taskId, subtaskId) {
 function openCreateModal() {
     createTitle.value = '';
     createTag.value = '';
-    createResponsavel.value = '';
+    Array.from(createResponsaveis.options).forEach(opt => opt.selected = false);
     createPrazo.value = '';
     subtaskList.innerHTML = '';
     createModal.classList.add('active');
@@ -544,7 +566,7 @@ function closeCreateModal() {
     createModal.classList.remove('active');
     createTitle.value = '';
     createTag.value = '';
-    createResponsavel.value = '';
+    Array.from(createResponsaveis.options).forEach(opt => opt.selected = false);
     createPrazo.value = '';
     subtaskList.innerHTML = '';
 }
@@ -644,7 +666,7 @@ function getEditSubtasks() {
 }
 
 // ============================================================
-//  CRIAR TAREFA
+//  CRIAR TAREFA - COM MÚLTIPLOS RESPONSÁVEIS
 // ============================================================
 
 async function createTask() {
@@ -655,12 +677,14 @@ async function createTask() {
     }
 
     const tag = createTag.value;
-    const responsavel_id = createResponsavel.value || null;
+    const responsaveis = Array.from(createResponsaveis.selectedOptions)
+        .map(opt => parseInt(opt.value))
+        .filter(id => !isNaN(id) && id > 0);
     const prazo = createPrazo.value || null;
     const subtarefas = getSubtasksFromContainer(subtaskList);
 
     try {
-        await criarTarefa(titulo, tag, subtarefas, responsavel_id, prazo);
+        await criarTarefa(titulo, tag, subtarefas, responsaveis, prazo);
         await carregarTarefasDoServidor();
         closeCreateModal();
         render();
@@ -670,7 +694,7 @@ async function createTask() {
 }
 
 // ============================================================
-//  EDIÇÃO DE TAREFAS
+//  EDIÇÃO DE TAREFAS - COM MÚLTIPLOS RESPONSÁVEIS
 // ============================================================
 
 function openEditModal(taskId) {
@@ -680,7 +704,12 @@ function openEditModal(taskId) {
     editingTaskId = taskId;
     editTitle.value = task.titulo;
     editTag.value = task.tag || '';
-    editResponsavel.value = task.responsavel_id || '';
+
+    const responsaveisIds = task.responsaveis_ids || [];
+    Array.from(editResponsaveis.options).forEach(opt => {
+        opt.selected = responsaveisIds.includes(parseInt(opt.value));
+    });
+
     editPrazo.value = task.prazo || '';
     loadSubtasksIntoContainer(editSubtaskList, task.subtarefas || []);
     editModal.classList.add('active');
@@ -692,7 +721,7 @@ function closeEditModal() {
     editingTaskId = null;
     editTitle.value = '';
     editTag.value = '';
-    editResponsavel.value = '';
+    Array.from(editResponsaveis.options).forEach(opt => opt.selected = false);
     editPrazo.value = '';
     editSubtaskList.innerHTML = '';
 }
@@ -707,12 +736,14 @@ async function salvarEdicaoComVerificacao() {
     }
 
     const tag = editTag.value;
-    const responsavel_id = editResponsavel.value || null;
+    const responsaveis = Array.from(editResponsaveis.selectedOptions)
+        .map(opt => parseInt(opt.value))
+        .filter(id => !isNaN(id) && id > 0);
     const prazo = editPrazo.value || null;
     const subtarefas = getEditSubtasks();
 
     try {
-        await atualizarTarefa(editingTaskId, titulo, tag, subtarefas, responsavel_id, prazo);
+        await atualizarTarefa(editingTaskId, titulo, tag, subtarefas, responsaveis, prazo);
         await carregarTarefasDoServidor();
 
         const task = tarefas.find(t => t.id === editingTaskId);
@@ -802,7 +833,6 @@ function updateStats() {
     const done = tarefas.filter(t => t.status === 'done').length;
     const pending = total - done;
 
-    // Tarefas atrasadas
     const hoje = new Date();
     const overdue = tarefas.filter(t => t.prazo && t.status !== 'done' && new Date(t.prazo) < hoje).length;
 
@@ -836,7 +866,6 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
     });
 });
 
-// Filtrar por responsável
 if (filterResponsavel) {
     filterResponsavel.addEventListener('change', () => {
         currentResponsavelFilter = filterResponsavel.value;
@@ -845,7 +874,7 @@ if (filterResponsavel) {
 }
 
 // ============================================================
-//  CONFIGURAR EVENTOS
+//  CONFIGURAR EVENTOS - COM PESQUISA
 // ============================================================
 
 function configurarEventos() {
@@ -899,6 +928,20 @@ function configurarEventos() {
         };
     });
 
+    // --- NOVO: Pesquisa por título ---
+    searchInput.addEventListener('input', (e) => {
+        currentSearchTerm = e.target.value;
+        render();
+    });
+
+    // --- NOVO: Limpar pesquisa ---
+    clearSearchBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        currentSearchTerm = '';
+        render();
+        searchInput.focus();
+    });
+
     // --- Fechar com ESC ---
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
@@ -908,10 +951,6 @@ function configurarEventos() {
         }
     });
 }
-
-// ============================================================
-//  EXPORTAR FUNÇÕES
-// ============================================================
 
 window.carregarTarefasDoServidor = carregarTarefasDoServidor;
 window.render = render;

@@ -1,4 +1,4 @@
-// database.js - Configuração MySQL
+// database.js - Configuração MySQL com nova tabela tarefa_responsaveis
 const mysql = require('mysql2');
 require('dotenv').config();
 
@@ -45,6 +45,7 @@ async function inicializarBanco() {
                 email VARCHAR(100) UNIQUE NOT NULL,
                 senha VARCHAR(255) NOT NULL,
                 is_admin TINYINT DEFAULT 0,
+                status VARCHAR(20) DEFAULT 'aprovado',
                 criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
@@ -58,11 +59,9 @@ async function inicializarBanco() {
                 titulo VARCHAR(255) NOT NULL,
                 status ENUM('todo', 'doing', 'done') DEFAULT 'todo',
                 tag VARCHAR(50),
-                responsavel_id INT,
                 prazo DATE NULL,
                 data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
-                FOREIGN KEY (responsavel_id) REFERENCES usuarios(id) ON DELETE SET NULL
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
             )
         `);
         console.log('✅ Tabela tarefas criada/verificada');
@@ -79,7 +78,20 @@ async function inicializarBanco() {
         `);
         console.log('✅ Tabela subtarefas criada/verificada');
 
-        // 4. Verificar/Criar admin padrão
+        // 4. NOVA TABELA: Responsáveis das tarefas (N:N)
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS tarefa_responsaveis (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                tarefa_id INT NOT NULL,
+                usuario_id INT NOT NULL,
+                FOREIGN KEY (tarefa_id) REFERENCES tarefas(id) ON DELETE CASCADE,
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+                UNIQUE KEY unique_responsavel (tarefa_id, usuario_id)
+            )
+        `);
+        console.log('✅ Tabela tarefa_responsaveis criada/verificada');
+
+        // 5. Verificar/Criar admin padrão
         const [rows] = await db.query('SELECT * FROM usuarios WHERE is_admin = 1 LIMIT 1');
 
         if (rows.length === 0) {
@@ -88,8 +100,8 @@ async function inicializarBanco() {
             const senhaHash = bcrypt.hashSync('admin123', salt);
 
             await db.query(
-                'INSERT INTO usuarios (nome, email, senha, is_admin) VALUES (?, ?, ?, ?)',
-                ['Administrador', 'admin@admin.com', senhaHash, 1]
+                'INSERT INTO usuarios (nome, email, senha, is_admin, status) VALUES (?, ?, ?, ?, ?)',
+                ['Administrador', 'admin@admin.com', senhaHash, 1, 'aprovado']
             );
             console.log('✅ Usuário admin criado!');
             console.log('   Email: admin@admin.com');

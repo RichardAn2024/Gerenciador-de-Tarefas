@@ -1,12 +1,11 @@
-// auth.js - Frontend com suporte a aprovação
+// auth.js - Frontend com suporte a aprovação e MÚLTIPLOS RESPONSÁVEIS
 
 // ============================================================
 //  CONFIGURAÇÃO DA API
 // ============================================================
 
-// Detecta automaticamente se está em produção ou desenvolvimento
-const API_URL = window.location.hostname === 'localhost'
-    ? 'http://localhost:3000/api'
+const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:8080/api'
     : window.location.origin + '/api';
 
 console.log(`🔗 Conectando ao servidor: ${API_URL}`);
@@ -109,7 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.setItem('usuario', JSON.stringify(data.usuario));
                     window.location.href = 'index.html';
                 } else {
-                    // Verificar se é erro de pendência
                     if (data.erro && data.erro.includes('Aguardando aprovação')) {
                         alert('📝 ' + data.erro);
                     } else if (data.erro && data.erro.includes('rejeitado')) {
@@ -162,9 +160,12 @@ async function apiRequest(endpoint, options = {}) {
     const token = getToken();
     const headers = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
         ...options.headers
     };
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
 
     const response = await fetch(`${API_URL}${endpoint}`, {
         ...options,
@@ -180,7 +181,7 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 // ============================================================
-//  FUNÇÕES DE TAREFAS (GLOBAIS)
+//  FUNÇÕES DE TAREFAS (GLOBAIS) - COM MÚLTIPLOS RESPONSÁVEIS
 // ============================================================
 
 async function carregarTarefas() {
@@ -199,10 +200,10 @@ async function carregarTarefasAssistencia() {
     return response.json();
 }
 
-async function criarTarefa(titulo, tag, subtarefas, responsavel_id = null, prazo = null) {
+async function criarTarefa(titulo, tag, subtarefas, responsaveis = [], prazo = null) {
     const response = await apiRequest('/tarefas', {
         method: 'POST',
-        body: JSON.stringify({ titulo, tag, subtarefas, responsavel_id, prazo })
+        body: JSON.stringify({ titulo, tag, subtarefas, responsaveis, prazo })
     });
     if (!response.ok) {
         const data = await response.json();
@@ -211,10 +212,10 @@ async function criarTarefa(titulo, tag, subtarefas, responsavel_id = null, prazo
     return response.json();
 }
 
-async function atualizarTarefa(id, titulo, tag, subtarefas, responsavel_id = null, prazo = null) {
+async function atualizarTarefa(id, titulo, tag, subtarefas, responsaveis = [], prazo = null) {
     const response = await apiRequest(`/tarefas/${id}`, {
         method: 'PUT',
-        body: JSON.stringify({ titulo, tag, subtarefas, responsavel_id, prazo })
+        body: JSON.stringify({ titulo, tag, subtarefas, responsaveis, prazo })
     });
     if (!response.ok) {
         const data = await response.json();

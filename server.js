@@ -1,4 +1,4 @@
-// server.js - Versão com SISTEMA DE APROVAÇÃO DE USUÁRIOS
+// server.js - Versão com MÚLTIPLOS RESPONSÁVEIS
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -24,7 +24,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
 // ============================================================
-//  SIMULAÇÃO DE BANCO DE DADOS
+//  SIMULAÇÃO DE BANCO DE DADOS (EM MEMÓRIA)
 // ============================================================
 
 const ADMIN_USER = {
@@ -170,7 +170,10 @@ app.get('/api/admin/usuarios', (req, res) => {
             email: u.email,
             is_admin: u.isAdmin ? 1 : 0,
             status: u.status || 'aprovado',
-            total_tarefas: tarefas.filter(t => t.responsavel_id === u.id || t.usuario_id === u.id).length,
+            total_tarefas: tarefas.filter(t => {
+                const responsaveis = t.responsaveis || [];
+                return responsaveis.includes(u.id) || t.usuario_id === u.id;
+            }).length,
             criado_em: u.data_cadastro || new Date().toISOString()
         }));
         res.json(usuariosList);
@@ -257,7 +260,7 @@ app.delete('/api/admin/usuarios/:id', (req, res) => {
 });
 
 // ============================================================
-//  ROTAS DE TAREFAS
+//  ROTAS DE TAREFAS - COM MÚLTIPLOS RESPONSÁVEIS
 // ============================================================
 
 // Listar tarefas (exclui assistência)
@@ -266,11 +269,19 @@ app.get('/api/tarefas', (req, res) => {
         const tarefasFiltradas = tarefas
             .filter(t => t.tag !== 'assistencia')
             .map(t => {
-                const responsavel = usuarios.find(u => u.id === t.responsavel_id);
+                // Buscar nomes dos responsáveis
+                const responsaveisIds = t.responsaveis || [];
+                const responsaveisNomes = responsaveisIds.map(id => {
+                    const usuario = usuarios.find(u => u.id === id);
+                    return usuario ? usuario.nome : null;
+                }).filter(n => n !== null);
+
                 const criador = usuarios.find(u => u.id === t.usuario_id);
+
                 return {
                     ...t,
-                    responsavel_nome: responsavel ? responsavel.nome : null,
+                    responsaveis_ids: responsaveisIds,
+                    responsaveis_nomes: responsaveisNomes,
                     criador_nome: criador ? criador.nome : 'Administrador',
                     criador_id: t.usuario_id || 1
                 };
@@ -290,11 +301,18 @@ app.get('/api/tarefas/assistencia', (req, res) => {
         const tarefasAssistencia = tarefas
             .filter(t => t.tag === 'assistencia')
             .map(t => {
-                const responsavel = usuarios.find(u => u.id === t.responsavel_id);
+                const responsaveisIds = t.responsaveis || [];
+                const responsaveisNomes = responsaveisIds.map(id => {
+                    const usuario = usuarios.find(u => u.id === id);
+                    return usuario ? usuario.nome : null;
+                }).filter(n => n !== null);
+
                 const criador = usuarios.find(u => u.id === t.usuario_id);
+
                 return {
                     ...t,
-                    responsavel_nome: responsavel ? responsavel.nome : null,
+                    responsaveis_ids: responsaveisIds,
+                    responsaveis_nomes: responsaveisNomes,
                     criador_nome: criador ? criador.nome : 'Administrador',
                     criador_id: t.usuario_id || 1
                 };
@@ -308,10 +326,10 @@ app.get('/api/tarefas/assistencia', (req, res) => {
     }
 });
 
-// Criar tarefa
+// Criar tarefa - COM MÚLTIPLOS RESPONSÁVEIS
 app.post('/api/tarefas', (req, res) => {
     try {
-        const { titulo, tag, subtarefas: subtarefasList, responsavel_id, prazo } = req.body;
+        const { titulo, tag, subtarefas: subtarefasList, responsaveis, prazo } = req.body;
 
         if (!titulo) {
             return res.status(400).json({ erro: 'Título é obrigatório' });
@@ -329,14 +347,14 @@ app.post('/api/tarefas', (req, res) => {
             titulo: titulo,
             tag: tag || '',
             status: 'todo',
-            responsavel_id: responsavel_id || null,
+            responsaveis: responsaveis || [], // ARRAY de IDs
             prazo: prazo || null,
             data_criacao: new Date().toISOString(),
             subtarefas: subtarefasComId
         };
 
         tarefas.push(novaTarefa);
-        console.log(`✅ Tarefa criada: ${titulo}`);
+        console.log(`✅ Tarefa criada: ${titulo} com ${novaTarefa.responsaveis.length} responsável(is)`);
         res.json({
             id: novaTarefa.id,
             mensagem: 'Tarefa criada com sucesso!'
@@ -347,11 +365,11 @@ app.post('/api/tarefas', (req, res) => {
     }
 });
 
-// Atualizar tarefa
+// Atualizar tarefa - COM MÚLTIPLOS RESPONSÁVEIS
 app.put('/api/tarefas/:id', (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const { titulo, tag, subtarefas: subtarefasList, responsavel_id, prazo } = req.body;
+        const { titulo, tag, subtarefas: subtarefasList, responsaveis, prazo } = req.body;
         const tarefa = tarefas.find(t => t.id === id);
 
         if (!tarefa) {
@@ -373,10 +391,11 @@ app.put('/api/tarefas/:id', (req, res) => {
 
         tarefa.titulo = titulo || tarefa.titulo;
         tarefa.tag = tag || tarefa.tag;
-        tarefa.responsavel_id = responsavel_id || tarefa.responsavel_id;
+        tarefa.responsaveis = responsaveis || []; // ARRAY de IDs
         tarefa.prazo = prazo || tarefa.prazo;
         tarefa.subtarefas = novasSubtarefas;
 
+        console.log(`✏️ Tarefa ${id} atualizada com ${tarefa.responsaveis.length} responsável(is)`);
         res.json({ mensagem: 'Tarefa atualizada com sucesso!' });
     } catch (error) {
         console.error('❌ Erro ao atualizar tarefa:', error);
