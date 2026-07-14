@@ -1313,3 +1313,21 @@ select[multiple] option:hover {
         flex-shrink: 0;
     }
 }
+
+/* style.css - Adicione no final */
+
+/* ============================================================
+   MENSAGEM DE SUCESSO (Recuperação de senha)
+   ============================================================ */
+
+.auth-success {
+    background: rgba(232, 245, 233, 0.95);
+    color: #2e7d32;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    border-left: 4px solid #2e7d32;
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.3s ease;
+}

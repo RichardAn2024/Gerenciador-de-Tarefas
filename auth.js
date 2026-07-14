@@ -1,4 +1,4 @@
-// auth.js - Frontend com suporte a aprovação e MÚLTIPLOS RESPONSÁVEIS
+// auth.js - Frontend com suporte a aprovação, MÚLTIPLOS RESPONSÁVEIS e RECUPERAÇÃO DE SENHA
 
 // ============================================================
 //  CONFIGURAÇÃO DA API
@@ -266,3 +266,80 @@ async function listarUsuarios() {
     }
     return response.json();
 }
+
+// ============================================================
+//  FUNÇÕES DE RECUPERAÇÃO DE SENHA (NOVO)
+// ============================================================
+
+/**
+ * Solicita um código de recuperação para o email informado
+ * @param {string} email - Email do usuário
+ * @returns {Promise<Object>} - Resposta do servidor
+ */
+async function solicitarRecuperacao(email) {
+    const response = await fetch(`${API_URL}/recuperar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+    });
+
+    if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.erro || 'Erro ao solicitar recuperação');
+    }
+
+    return response.json();
+}
+
+/**
+ * Redefine a senha usando o código de verificação
+ * @param {string} email - Email do usuário
+ * @param {string} codigo - Código de verificação de 6 dígitos
+ * @param {string} novaSenha - Nova senha (mínimo 6 caracteres)
+ * @returns {Promise<Object>} - Resposta do servidor
+ */
+async function resetarSenha(email, codigo, novaSenha) {
+    const response = await fetch(`${API_URL}/resetar-senha`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, codigo, novaSenha })
+    });
+
+    if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.erro || 'Erro ao redefinir senha');
+    }
+
+    return response.json();
+}
+
+// ============================================================
+//  EXPORTAR FUNÇÕES (para uso em outros arquivos)
+// ============================================================
+
+// Funções de autenticação
+window.getToken = getToken;
+window.getUsuario = getUsuario;
+window.logout = logout;
+window.verificarAutenticacao = verificarAutenticacao;
+window.apiRequest = apiRequest;
+
+// Funções de tarefas
+window.carregarTarefas = carregarTarefas;
+window.carregarTarefasAssistencia = carregarTarefasAssistencia;
+window.criarTarefa = criarTarefa;
+window.atualizarTarefa = atualizarTarefa;
+window.atualizarStatusTarefa = atualizarStatusTarefa;
+window.alternarSubtarefa = alternarSubtarefa;
+window.deletarTarefa = deletarTarefa;
+window.listarUsuarios = listarUsuarios;
+
+// Funções de recuperação de senha (NOVO)
+window.solicitarRecuperacao = solicitarRecuperacao;
+window.resetarSenha = resetarSenha;
+
+console.log('✅ auth.js carregado com sucesso!');
+console.log('📋 Funções disponíveis:');
+console.log('   - Autenticação: login, cadastro, logout');
+console.log('   - Tarefas: criar, editar, deletar, listar');
+console.log('   - Recuperação: solicitarRecuperacao, resetarSenha');

@@ -1,11 +1,11 @@
-// server.js - Versão com MÚLTIPLOS RESPONSÁVEIS
+// server.js - Versão com MÚLTIPLOS RESPONSÁVEIS, PESQUISA, RECUPERAÇÃO DE SENHA E NOME VOLCONTROL
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-console.log('🚀 Iniciando servidor Volmanday...');
+console.log('🚀 Iniciando servidor VolControl...');
 
 // ============================================================
 //  MIDDLEWARE
@@ -39,6 +39,12 @@ const ADMIN_USER = {
 let usuarios = [ADMIN_USER];
 let tarefas = [];
 let subtarefaIdCounter = 1;
+
+// ============================================================
+//  RECUPERAÇÃO DE SENHA - ARMAZENAR CÓDIGOS
+// ============================================================
+
+const codigosRecuperacao = {};
 
 // ============================================================
 //  ROTAS DE AUTENTICAÇÃO
@@ -133,6 +139,103 @@ app.post('/api/cadastro', (req, res) => {
     } catch (error) {
         console.error('❌ Erro no cadastro:', error);
         res.status(500).json({ erro: 'Erro interno no servidor' });
+    }
+});
+
+// ============================================================
+//  ROTAS DE RECUPERAÇÃO DE SENHA
+// ============================================================
+
+// Solicitar código de recuperação
+app.post('/api/recuperar', (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ erro: 'Email é obrigatório' });
+        }
+
+        const usuario = usuarios.find(u => u.email === email);
+
+        if (!usuario) {
+            return res.status(404).json({ erro: 'Email não encontrado' });
+        }
+
+        // Gerar código de 6 dígitos
+        const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+
+        // Armazenar com expiração de 15 minutos
+        codigosRecuperacao[email] = {
+            codigo: codigo,
+            expiraEm: Date.now() + 15 * 60 * 1000 // 15 minutos
+        };
+
+        console.log(`🔑 Código de recuperação para ${email}: ${codigo}`);
+
+        // Em produção, enviaria email. Aqui mostramos no console.
+        // O código também é retornado na resposta para facilitar testes
+        res.json({
+            mensagem: '📧 Código de recuperação enviado para seu email!',
+            codigo: codigo, // Remove em produção
+            email: email
+        });
+
+    } catch (error) {
+        console.error('❌ Erro na recuperação:', error);
+        res.status(500).json({ erro: 'Erro ao processar recuperação' });
+    }
+});
+
+// Redefinir senha
+app.post('/api/resetar-senha', (req, res) => {
+    try {
+        const { email, codigo, novaSenha } = req.body;
+
+        if (!email || !codigo || !novaSenha) {
+            return res.status(400).json({ erro: 'Email, código e nova senha são obrigatórios' });
+        }
+
+        if (novaSenha.length < 6) {
+            return res.status(400).json({ erro: 'A senha deve ter pelo menos 6 caracteres' });
+        }
+
+        const usuario = usuarios.find(u => u.email === email);
+
+        if (!usuario) {
+            return res.status(404).json({ erro: 'Email não encontrado' });
+        }
+
+        const registro = codigosRecuperacao[email];
+
+        if (!registro) {
+            return res.status(400).json({ erro: 'Código inválido ou expirado. Solicite um novo.' });
+        }
+
+        if (registro.codigo !== codigo) {
+            return res.status(400).json({ erro: 'Código incorreto' });
+        }
+
+        if (Date.now() > registro.expiraEm) {
+            delete codigosRecuperacao[email];
+            return res.status(400).json({ erro: 'Código expirado. Solicite um novo.' });
+        }
+
+        // Atualizar senha
+        usuario.senha = novaSenha;
+
+        // Remover código usado
+        delete codigosRecuperacao[email];
+
+        console.log(`🔐 Senha redefinida para ${email}`);
+
+        res.json({
+            mensagem: '✅ Senha redefinida com sucesso!',
+            email: email
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao redefinir senha:', error);
+        res.status(500).json({ erro: 'Erro ao redefinir senha' });
     }
 });
 
@@ -522,20 +625,31 @@ app.get('/assistencia.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'assistencia.html'));
 });
 
+// ROTAS - Recuperação de senha
+app.get('/recuperar.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'recuperar.html'));
+});
+
+app.get('/resetar.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'resetar.html'));
+});
+
 // ============================================================
 //  HEALTH CHECK
 // ============================================================
 
 app.get('/api/health', (req, res) => {
     const pendentes = usuarios.filter(u => u.status === 'pendente').length;
+    const codigosAtivos = Object.keys(codigosRecuperacao).length;
     res.json({
         status: 'ok',
-        mensagem: 'Volmanday Server rodando no Railway!',
+        mensagem: 'VolControl Server rodando no Railway!',
         porta: PORT,
         timestamp: new Date().toISOString(),
         usuarios: usuarios.length,
         usuarios_pendentes: pendentes,
-        tarefas: tarefas.length
+        tarefas: tarefas.length,
+        codigos_recuperacao_ativos: codigosAtivos
     });
 });
 
@@ -555,8 +669,9 @@ app.use((req, res) => {
 // ============================================================
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Volmanday Server rodando na porta ${PORT}`);
+    console.log(`🚀 VolControl Server rodando na porta ${PORT}`);
     console.log(`📋 API Health: /api/health`);
     console.log(`👤 Admin: admin@admin.com / admin123`);
     console.log(`📊 Usuários: ${usuarios.length} (${usuarios.filter(u => u.status === 'pendente').length} pendentes)`);
+    console.log(`🔑 Sistema de recuperação de senha ativo`);
 });
