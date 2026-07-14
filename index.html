@@ -17,7 +17,7 @@
         <header class="header">
             <div class="logo-area">
                 <div class="logo-icon">
-                    <img src="https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.us-east-2.amazonaws.com%2Fuploads%2Farticles%2Fx78i6u1vmfbzrvvie5xe.png"
+                    <img src="https://raw.githubusercontent.com/RichardAn2024/Gerenciador-de-Tarefas/main/images/VolControl.png"
                         alt="VolControl" class="logo-img" />
                 </div>
                 <div class="logo-text">Vol<span>Control</span></div>
@@ -55,7 +55,6 @@
         <div class="toolbar">
             <button class="btn btn-primary" id="openCreateBtn">➕ Nova Tarefa</button>
 
-            <!-- Campo de Pesquisa -->
             <div class="search-container">
                 <input type="text" id="searchInput" placeholder="🔍 Pesquisar por título..." class="search-input" />
                 <button class="btn btn-outline btn-sm" id="clearSearchBtn">✕ Limpar</button>
@@ -100,6 +99,16 @@
                 </div>
                 <div class="task-list" id="list-done"></div>
             </div>
+        </div>
+
+        <!-- ===== PAGINAÇÃO ===== -->
+        <div class="pagination-container" id="paginationContainer">
+            <div class="pagination-controls">
+                <button class="btn btn-outline btn-sm" id="prevPageBtn" disabled>◀ Anterior</button>
+                <span class="pagination-info" id="paginationInfo">Página 1 de 1</span>
+                <button class="btn btn-outline btn-sm" id="nextPageBtn" disabled>Próximo ▶</button>
+            </div>
+            <div class="page-numbers" id="pageNumbers"></div>
         </div>
 
     </div>

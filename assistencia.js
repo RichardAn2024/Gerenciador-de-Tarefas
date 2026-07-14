@@ -1,17 +1,21 @@
 /* ============================================================
    assistencia.js - Lógica da página de Assistência Técnica
-   Filtra apenas tarefas com tag 'assistencia'
-   COM PESQUISA POR TÍTULO E MÚLTIPLOS RESPONSÁVEIS
+   COM PAGINAÇÃO, PESQUISA E MÚLTIPLOS RESPONSÁVEIS
    ============================================================ */
 
 // --- Estado ---
 let tarefas = [];
 let currentFilter = 'all';
 let currentResponsavelFilter = 'all';
-let currentSearchTerm = ''; // NOVO: termo de pesquisa
+let currentSearchTerm = '';
 let editingTaskId = null;
 let usuariosDisponiveis = [];
 let usuarioLogado = null;
+
+// --- Paginação ---
+let currentPage = 1;
+const tasksPerPage = 10;
+let totalPages = 1;
 
 // --- Referências DOM ---
 const openCreateBtn = document.getElementById('openCreateBtn');
@@ -148,7 +152,7 @@ function popularFilterResponsavel() {
 }
 
 // ============================================================
-//  CARREGAR TAREFAS (APENAS ASSISTÊNCIA TÉCNICA)
+//  CARREGAR TAREFAS
 // ============================================================
 
 async function carregarTarefasDoServidor() {
@@ -162,18 +166,16 @@ async function carregarTarefasDoServidor() {
 }
 
 // ============================================================
-//  RENDERIZAÇÃO - COM FILTRO POR TÍTULO
+//  RENDERIZAÇÃO - COM PAGINAÇÃO
 // ============================================================
 
 function render() {
     let filtered = tarefas;
 
-    // Filtrar por status
     if (currentFilter !== 'all') {
         filtered = filtered.filter(t => t.status === currentFilter);
     }
 
-    // Filtrar por responsável
     if (currentResponsavelFilter !== 'all') {
         filtered = filtered.filter(t => {
             const responsaveis = t.responsaveis_ids || [];
@@ -181,7 +183,6 @@ function render() {
         });
     }
 
-    // NOVO: Filtrar por termo de pesquisa (título)
     if (currentSearchTerm.trim() !== '') {
         const term = currentSearchTerm.toLowerCase().trim();
         filtered = filtered.filter(t =>
@@ -189,22 +190,21 @@ function render() {
         );
     }
 
-    // Limpar listas
+    const paginatedTasks = getPaginatedTasks(filtered);
+
     for (const status of ['todo', 'doing', 'done']) {
         const list = document.getElementById(statusMap[status].listId);
         list.innerHTML = '';
     }
 
-    // Preencher colunas
     for (const status of ['todo', 'doing', 'done']) {
         const list = document.getElementById(statusMap[status].listId);
-        const tasksInStatus = filtered.filter(t => t.status === status);
+        const tasksInStatus = paginatedTasks.filter(t => t.status === status);
 
         if (tasksInStatus.length === 0) {
             const empty = document.createElement('div');
             empty.className = 'empty-state';
 
-            // Mensagem personalizada se houver pesquisa
             if (currentSearchTerm.trim() !== '') {
                 empty.textContent = `Nenhuma tarefa de assistência encontrada para "${currentSearchTerm}"`;
             } else {
@@ -220,8 +220,97 @@ function render() {
         });
     }
 
+    renderPagination(filtered.length);
     updateCounters();
     updateStats();
+}
+
+// ============================================================
+//  PAGINAÇÃO
+// ============================================================
+
+function getPaginatedTasks(filteredTasks) {
+    totalPages = Math.ceil(filteredTasks.length / tasksPerPage);
+    if (totalPages === 0) totalPages = 1;
+
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const startIndex = (currentPage - 1) * tasksPerPage;
+    const endIndex = startIndex + tasksPerPage;
+
+    return filteredTasks.slice(startIndex, endIndex);
+}
+
+function renderPagination(totalTasks) {
+    const container = document.getElementById('paginationContainer');
+    const prevBtn = document.getElementById('prevPageBtn');
+    const nextBtn = document.getElementById('nextPageBtn');
+    const info = document.getElementById('paginationInfo');
+    const pageNumbers = document.getElementById('pageNumbers');
+
+    if (!container) return;
+
+    if (totalTasks === 0) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'flex';
+
+    info.textContent = `Página ${currentPage} de ${totalPages}`;
+
+    prevBtn.disabled = currentPage <= 1;
+    nextBtn.disabled = currentPage >= totalPages;
+
+    pageNumbers.innerHTML = '';
+
+    let startPage = Math.max(1, currentPage - 3);
+    let endPage = Math.min(totalPages, currentPage + 3);
+
+    if (currentPage <= 3) {
+        endPage = Math.min(totalPages, 7);
+    }
+
+    if (currentPage >= totalPages - 2) {
+        startPage = Math.max(1, totalPages - 6);
+    }
+
+    if (startPage > 1) {
+        addPageNumber(1);
+        if (startPage > 2) {
+            const dots = document.createElement('span');
+            dots.textContent = '…';
+            dots.style.cssText = 'padding: 4px 8px; color: #8c929a;';
+            pageNumbers.appendChild(dots);
+        }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        addPageNumber(i);
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            const dots = document.createElement('span');
+            dots.textContent = '…';
+            dots.style.cssText = 'padding: 4px 8px; color: #8c929a;';
+            pageNumbers.appendChild(dots);
+        }
+        addPageNumber(totalPages);
+    }
+}
+
+function addPageNumber(page) {
+    const pageNumbers = document.getElementById('pageNumbers');
+    const btn = document.createElement('button');
+    btn.className = `page-number-btn${page === currentPage ? ' active' : ''}`;
+    btn.textContent = page;
+    btn.addEventListener('click', () => {
+        currentPage = page;
+        render();
+    });
+    pageNumbers.appendChild(btn);
 }
 
 // ============================================================
@@ -255,7 +344,6 @@ function createTaskCard(task) {
     }
     card.appendChild(title);
 
-    // Criador
     if (task.criador_nome) {
         const criadorEl = document.createElement('div');
         criadorEl.className = 'task-criador';
@@ -275,7 +363,6 @@ function createTaskCard(task) {
         card.appendChild(criadorEl);
     }
 
-    // Responsáveis (MÚLTIPLOS)
     if (task.responsaveis_nomes && task.responsaveis_nomes.length > 0) {
         const responsavelEl = document.createElement('div');
         responsavelEl.className = 'task-responsavel';
@@ -295,13 +382,11 @@ function createTaskCard(task) {
         card.appendChild(responsavelEl);
     }
 
-    // Data de criação
     const dateEl = document.createElement('div');
     dateEl.className = 'task-date';
     dateEl.innerHTML = `📅 Criado: ${formatarData(task.data_criacao)}`;
     card.appendChild(dateEl);
 
-    // Data de prazo
     if (task.prazo) {
         const prazoEl = document.createElement('div');
         prazoEl.className = 'task-date task-prazo';
@@ -319,7 +404,6 @@ function createTaskCard(task) {
         card.appendChild(prazoEl);
     }
 
-    // Subtarefas
     const subtasksEl = document.createElement('div');
     subtasksEl.className = 'task-subtasks';
     if (task.subtarefas && task.subtarefas.length > 0) {
@@ -354,7 +438,6 @@ function createTaskCard(task) {
         card.appendChild(subtasksEl);
     }
 
-    // Meta
     const meta = document.createElement('div');
     meta.className = 'task-meta';
 
@@ -666,7 +749,7 @@ function getEditSubtasks() {
 }
 
 // ============================================================
-//  CRIAR TAREFA - COM MÚLTIPLOS RESPONSÁVEIS
+//  CRIAR TAREFA
 // ============================================================
 
 async function createTask() {
@@ -694,7 +777,7 @@ async function createTask() {
 }
 
 // ============================================================
-//  EDIÇÃO DE TAREFAS - COM MÚLTIPLOS RESPONSÁVEIS
+//  EDIÇÃO DE TAREFAS
 // ============================================================
 
 function openEditModal(taskId) {
@@ -848,7 +931,7 @@ function formatarData(dataStr) {
 }
 
 // ============================================================
-//  FILTROS
+//  FILTROS - COM RESET DE PÁGINA
 // ============================================================
 
 document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -856,6 +939,7 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
         document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentFilter = btn.dataset.filter;
+        currentPage = 1;
         render();
     });
 });
@@ -863,12 +947,13 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
 if (filterResponsavel) {
     filterResponsavel.addEventListener('change', () => {
         currentResponsavelFilter = filterResponsavel.value;
+        currentPage = 1;
         render();
     });
 }
 
 // ============================================================
-//  CONFIGURAR EVENTOS - COM PESQUISA
+//  CONFIGURAR EVENTOS - COM PAGINAÇÃO
 // ============================================================
 
 function configurarEventos() {
@@ -922,19 +1007,42 @@ function configurarEventos() {
         };
     });
 
-    // --- NOVO: Pesquisa por título ---
+    // --- Pesquisa ---
     searchInput.addEventListener('input', (e) => {
         currentSearchTerm = e.target.value;
+        currentPage = 1;
         render();
     });
 
-    // --- NOVO: Limpar pesquisa ---
     clearSearchBtn.addEventListener('click', () => {
         searchInput.value = '';
         currentSearchTerm = '';
+        currentPage = 1;
         render();
         searchInput.focus();
     });
+
+    // --- Paginação ---
+    const prevBtn = document.getElementById('prevPageBtn');
+    const nextBtn = document.getElementById('nextPageBtn');
+
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                render();
+            }
+        });
+    }
+
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                render();
+            }
+        });
+    }
 
     // --- Fechar com ESC ---
     document.addEventListener('keydown', (e) => {
