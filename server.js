@@ -1,4 +1,4 @@
-// server.js - Versão com MySQL (persistente) - CORRIGIDO
+// server.js - Versão com MySQL (persistente) - CORRIGIDO COM USUÁRIO LOGADO
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -282,6 +282,39 @@ async function getEstatisticas() {
 }
 
 // ============================================================
+//  FUNÇÃO PARA PEGAR USUÁRIO DO TOKEN (MIDDLEWARE)
+// ============================================================
+
+function autenticar(req, res, next) {
+    // Como estamos usando token fake, pegamos o usuário do localStorage via header
+    // Em produção, isso seria feito com JWT
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        // Se não tiver token, assume usuário 1 (admin) - APENAS PARA COMPATIBILIDADE
+        req.usuarioId = 1;
+        return next();
+    }
+
+    try {
+        // Token fake - extrair usuário do token
+        // Formato: "Bearer fake-token-123456"
+        const token = authHeader.split(' ')[1];
+        if (token && token.startsWith('fake-token-')) {
+            // Tentar pegar o usuário do localStorage não é possível no backend
+            // Usamos o ID do admin por padrão se não conseguir identificar
+            req.usuarioId = 1;
+        } else {
+            req.usuarioId = 1;
+        }
+        next();
+    } catch (error) {
+        console.error('❌ Erro na autenticação:', error);
+        req.usuarioId = 1;
+        next();
+    }
+}
+
+// ============================================================
 //  ROTAS DE AUTENTICAÇÃO
 // ============================================================
 
@@ -320,7 +353,7 @@ app.post('/api/login', async (req, res) => {
         console.log(`✅ Login bem-sucedido: ${email}`);
         res.json({
             mensagem: 'Login bem-sucedido!',
-            token: 'fake-token-' + Date.now(),
+            token: 'fake-token-' + Date.now() + '-' + usuario.id,
             usuario: {
                 id: usuario.id,
                 nome: usuario.nome,
@@ -508,9 +541,10 @@ app.delete('/api/admin/usuarios/:id', async (req, res) => {
 });
 
 // ============================================================
-//  ROTAS DE TAREFAS
+//  ROTAS DE TAREFAS - CORRIGIDAS COM USUÁRIO LOGADO
 // ============================================================
 
+// Listar tarefas (exclui assistência)
 app.get('/api/tarefas', async (req, res) => {
     try {
         const tarefas = await getTarefas();
@@ -522,6 +556,7 @@ app.get('/api/tarefas', async (req, res) => {
     }
 });
 
+// Listar tarefas de assistência
 app.get('/api/tarefas/assistencia', async (req, res) => {
     try {
         const tarefas = await getTarefasAssistencia();
@@ -533,6 +568,7 @@ app.get('/api/tarefas/assistencia', async (req, res) => {
     }
 });
 
+// Criar tarefa - CORRIGIDO: usa o ID do usuário logado
 app.post('/api/tarefas', async (req, res) => {
     try {
         const { titulo, tag, subtarefas, responsaveis, prazo } = req.body;
@@ -541,8 +577,29 @@ app.post('/api/tarefas', async (req, res) => {
             return res.status(400).json({ erro: 'Título é obrigatório' });
         }
 
-        const id = await createTarefa(1, titulo, tag, subtarefas, responsaveis, prazo);
-        console.log(`✅ Tarefa criada: ${titulo}`);
+        // Pegar o ID do usuário logado (do token)
+        // Como estamos usando token fake, extraímos do header
+        let usuarioId = 1; // fallback
+        const authHeader = req.headers.authorization;
+        if (authHeader) {
+            try {
+                const token = authHeader.split(' ')[1];
+                if (token && token.startsWith('fake-token-')) {
+                    const parts = token.split('-');
+                    if (parts.length >= 3) {
+                        const id = parseInt(parts[2]);
+                        if (!isNaN(id)) usuarioId = id;
+                    }
+                }
+            } catch (e) {
+                console.warn('⚠️ Não foi possível extrair usuário do token, usando admin');
+            }
+        }
+
+        console.log(`📝 Criando tarefa para usuário ${usuarioId}`);
+
+        const id = await createTarefa(usuarioId, titulo, tag, subtarefas, responsaveis, prazo);
+        console.log(`✅ Tarefa criada: ${titulo} pelo usuário ${usuarioId}`);
         res.json({ id, mensagem: 'Tarefa criada com sucesso!' });
     } catch (error) {
         console.error('❌ Erro ao criar tarefa:', error);
@@ -550,6 +607,44 @@ app.post('/api/tarefas', async (req, res) => {
     }
 });
 
+// Criar tarefa de assistência - CORRIGIDO: usa o ID do usuário logado
+app.post('/api/tarefas/assistencia', async (req, res) => {
+    try {
+        const { titulo, tag, subtarefas, responsaveis, prazo } = req.body;
+
+        if (!titulo) {
+            return res.status(400).json({ erro: 'Título é obrigatório' });
+        }
+
+        let usuarioId = 1;
+        const authHeader = req.headers.authorization;
+        if (authHeader) {
+            try {
+                const token = authHeader.split(' ')[1];
+                if (token && token.startsWith('fake-token-')) {
+                    const parts = token.split('-');
+                    if (parts.length >= 3) {
+                        const id = parseInt(parts[2]);
+                        if (!isNaN(id)) usuarioId = id;
+                    }
+                }
+            } catch (e) {
+                console.warn('⚠️ Não foi possível extrair usuário do token, usando admin');
+            }
+        }
+
+        console.log(`📝 Criando tarefa de assistência para usuário ${usuarioId}`);
+
+        const id = await createTarefa(usuarioId, titulo, 'assistencia', subtarefas, responsaveis, prazo);
+        console.log(`✅ Tarefa de assistência criada: ${titulo} pelo usuário ${usuarioId}`);
+        res.json({ id, mensagem: 'Tarefa criada com sucesso!' });
+    } catch (error) {
+        console.error('❌ Erro ao criar tarefa:', error);
+        res.status(500).json({ erro: 'Erro ao criar tarefa' });
+    }
+});
+
+// Atualizar tarefa
 app.put('/api/tarefas/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
@@ -564,6 +659,7 @@ app.put('/api/tarefas/:id', async (req, res) => {
     }
 });
 
+// Atualizar status da tarefa
 app.patch('/api/tarefas/:id/status', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
@@ -577,6 +673,7 @@ app.patch('/api/tarefas/:id/status', async (req, res) => {
     }
 });
 
+// Alternar subtarefa
 app.patch('/api/subtarefas/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
@@ -590,6 +687,7 @@ app.patch('/api/subtarefas/:id', async (req, res) => {
     }
 });
 
+// Deletar tarefa
 app.delete('/api/tarefas/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
