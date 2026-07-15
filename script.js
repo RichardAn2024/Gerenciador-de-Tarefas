@@ -1055,13 +1055,13 @@ function updateStats() {
 function formatarData(dataStr) {
     if (!dataStr) return 'Sem data';
 
-    // Se for uma data ISO (YYYY-MM-DD), exibir apenas a data
-    if (dataStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    // Se for uma string no formato YYYY-MM-DD, exibir diretamente
+    if (typeof dataStr === 'string' && dataStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const partes = dataStr.split('-');
         return `${partes[2]}/${partes[1]}/${partes[0]}`;
     }
 
-    // Caso contrário, tentar parse normal
+    // Se for um objeto Date ou string ISO, converter
     try {
         const data = new Date(dataStr);
         if (isNaN(data.getTime())) return dataStr;
