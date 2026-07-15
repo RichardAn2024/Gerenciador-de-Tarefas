@@ -1,6 +1,6 @@
 /* ============================================================
    assistencia.js - Lógica da página de Assistência Técnica
-   COM ORDENAÇÃO SOB DEMANDA, PAGINAÇÃO, PESQUISA E MÚLTIPLOS RESPONSÁVEIS
+   (10 tarefas por coluna por página)
    ============================================================ */
 
 // --- Estado ---
@@ -8,14 +8,14 @@ let tarefas = [];
 let currentFilter = 'all';
 let currentResponsavelFilter = 'all';
 let currentSearchTerm = '';
-let currentSort = 'nenhum'; // Sem ordenação por padrão
+let currentSort = 'nenhum';
 let editingTaskId = null;
 let usuariosDisponiveis = [];
 let usuarioLogado = null;
 
 // --- Paginação ---
 let currentPage = 1;
-const tasksPerPage = 10;
+const tasksPerColumn = 10;
 let totalPages = 1;
 
 // --- Referências DOM ---
@@ -174,7 +174,6 @@ async function carregarTarefasDoServidor() {
 // ============================================================
 
 function sortTasks(tasks) {
-    // Se não houver filtro selecionado, retorna as tarefas sem ordenar
     if (currentSort === 'nenhum') {
         return tasks;
     }
@@ -211,7 +210,7 @@ function sortTasks(tasks) {
 }
 
 // ============================================================
-//  RENDERIZAÇÃO - COM ORDENAÇÃO SOB DEMANDA E PAGINAÇÃO
+//  RENDERIZAÇÃO
 // ============================================================
 
 function render() {
@@ -235,7 +234,6 @@ function render() {
         );
     }
 
-    // ORDENAÇÃO (só se selecionado)
     filtered = sortTasks(filtered);
 
     const paginatedTasks = getPaginatedTasks(filtered);
@@ -274,20 +272,40 @@ function render() {
 }
 
 // ============================================================
-//  PAGINAÇÃO
+//  PAGINAÇÃO: 10 TAREFAS POR COLUNA
 // ============================================================
 
 function getPaginatedTasks(filteredTasks) {
-    totalPages = Math.ceil(filteredTasks.length / tasksPerPage);
+    const tasksByStatus = {
+        todo: filteredTasks.filter(t => t.status === 'todo'),
+        doing: filteredTasks.filter(t => t.status === 'doing'),
+        done: filteredTasks.filter(t => t.status === 'done')
+    };
+
+    const maxTasksPerColumn = Math.max(
+        tasksByStatus.todo.length,
+        tasksByStatus.doing.length,
+        tasksByStatus.done.length
+    );
+
+    totalPages = Math.ceil(maxTasksPerColumn / tasksPerColumn);
     if (totalPages === 0) totalPages = 1;
 
     if (currentPage > totalPages) currentPage = totalPages;
     if (currentPage < 1) currentPage = 1;
 
-    const startIndex = (currentPage - 1) * tasksPerPage;
-    const endIndex = startIndex + tasksPerPage;
+    const startIndex = (currentPage - 1) * tasksPerColumn;
+    const endIndex = startIndex + tasksPerColumn;
 
-    return filteredTasks.slice(startIndex, endIndex);
+    const result = [];
+
+    for (const status of ['todo', 'doing', 'done']) {
+        const tasks = tasksByStatus[status] || [];
+        const pageTasks = tasks.slice(startIndex, endIndex);
+        result.push(...pageTasks);
+    }
+
+    return result;
 }
 
 function renderPagination(totalTasks) {
@@ -1001,7 +1019,7 @@ if (filterResponsavel) {
 }
 
 // ============================================================
-//  CONFIGURAR EVENTOS - COM ORDENAÇÃO SOB DEMANDA E PAGINAÇÃO
+//  CONFIGURAR EVENTOS
 // ============================================================
 
 function configurarEventos() {
@@ -1070,7 +1088,7 @@ function configurarEventos() {
         searchInput.focus();
     });
 
-    // --- Ordenação (só quando selecionado) ---
+    // --- Ordenação ---
     if (sortBy) {
         sortBy.addEventListener('change', () => {
             currentSort = sortBy.value;
