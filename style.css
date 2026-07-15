@@ -1,5 +1,6 @@
 /* ============================================================
-   style.css - Todos os estilos do Volmanday
+   style.css - Todos os estilos do VolControl
+   (COM LAYOUT AJUSTADO - 4 COLUNAS IGUAIS)
    ============================================================ */
 
 /* --- Reset e Estilos Globais --- */
@@ -8,6 +9,22 @@
     padding: 0;
     box-sizing: border-box;
     font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+}
+
+/* ============================================================
+   LAYOUT PRINCIPAL
+   ============================================================ */
+
+body {
+    background-color: #f5f6f8;
+    color: #1a1a1a;
+    padding: 24px;
+    min-height: 100vh;
+}
+
+.app-container {
+    max-width: 1600px;
+    margin: 0 auto;
 }
 
 /* ============================================================
@@ -66,18 +83,6 @@
     height: 130%;
     object-fit: contain;
     margin: -15%;
-}
-
-body {
-    background-color: #f5f6f8;
-    color: #1a1a1a;
-    padding: 24px;
-    min-height: 100vh;
-}
-
-.app-container {
-    max-width: 1400px;
-    margin: 0 auto;
 }
 
 /* --- Cabeçalho --- */
@@ -260,10 +265,13 @@ body {
     border-color: #F57C00;
 }
 
-/* --- Board --- */
+/* ============================================================
+   BOARD - 4 COLUNAS IGUAIS
+   ============================================================ */
+
 .board {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 20px;
     margin-top: 8px;
 }
@@ -273,9 +281,11 @@ body {
     border-radius: 16px;
     padding: 16px;
     min-height: 400px;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     transition: 0.2s;
+    overflow: hidden;
 }
 
 .column-header {
@@ -289,11 +299,12 @@ body {
 
 .column-title {
     font-weight: 600;
-    font-size: 16px;
+    font-size: 14px;
     color: #1a1a1a;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    flex-wrap: wrap;
 }
 
 .column-count {
@@ -323,6 +334,9 @@ body {
     cursor: grab;
     position: relative;
     animation: fadeIn 0.25s ease;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
 }
 
 .task-card:hover {
@@ -452,6 +466,12 @@ body {
     color: #0066cc;
 }
 
+.tag.assistencia {
+    background: #e3f2fd;
+    color: #1565C0;
+    font-weight: 600;
+}
+
 /* --- Ações do card --- */
 .task-actions {
     display: flex;
@@ -482,6 +502,33 @@ body {
 .task-actions .edit-btn:hover {
     color: #F57C00;
     background: #fff3e0;
+}
+
+/* --- Botões de Aprovar/Rejeitar --- */
+.approve-btn {
+    background: #4CAF50 !important;
+    color: white !important;
+    border-radius: 4px !important;
+    padding: 2px 6px !important;
+    font-size: 13px !important;
+}
+
+.approve-btn:hover {
+    background: #388E3C !important;
+    transform: scale(1.1);
+}
+
+.reject-btn {
+    background: #f44336 !important;
+    color: white !important;
+    border-radius: 4px !important;
+    padding: 2px 6px !important;
+    font-size: 13px !important;
+}
+
+.reject-btn:hover {
+    background: #d32f2f !important;
+    transform: scale(1.1);
 }
 
 /* --- Drag & Drop --- */
@@ -704,7 +751,7 @@ body {
    PÁGINAS DE AUTENTICAÇÃO - COM IMAGEM PERSONALIZADA
    ============================================================ */
 .auth-page {
-    background: url('https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.us-east-2.amazonaws.com%2Fuploads%2Farticles%2F2j2aslxwtdi7f3ax7i0o.jpg') no-repeat center center fixed;
+    background: url('https://raw.githubusercontent.com/RichardAn2024/Gerenciador-de-Tarefas/main/images/VolControl.png') no-repeat center center fixed;
     background-size: cover;
     display: flex;
     justify-content: center;
@@ -723,7 +770,6 @@ body {
     right: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.5);
-    /* Aumentei a opacidade do overlay */
     z-index: 0;
 }
 
@@ -826,6 +872,18 @@ body {
     font-size: 14px;
     border-left: 4px solid #c62828;
     backdrop-filter: blur(4px);
+}
+
+.auth-success {
+    background: rgba(232, 245, 233, 0.95);
+    color: #2e7d32;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    border-left: 4px solid #2e7d32;
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.3s ease;
 }
 
 .form-group {
@@ -968,6 +1026,50 @@ body {
     color: #F57C00;
 }
 
+.badge-pendente {
+    background: #ff9800;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.badge-aprovado {
+    background: #4CAF50;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.badge-rejeitado {
+    background: #f44336;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.btn-success {
+    background: #4CAF50;
+    color: white;
+    padding: 4px 12px;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+    margin-right: 4px;
+}
+
+.btn-success:hover {
+    background: #388E3C;
+    transform: scale(1.05);
+}
+
 .loading-text {
     text-align: center;
     color: #8c929a;
@@ -984,67 +1086,6 @@ body {
     text-align: center;
     color: #ff4d4f;
     padding: 40px !important;
-}
-
-/* ============================================================
-   RESPONSIVIDADE
-   ============================================================ */
-@media (max-width: 850px) {
-    .header-right {
-        flex-direction: column;
-        align-items: stretch;
-        width: 100%;
-    }
-
-    .user-info {
-        justify-content: center;
-    }
-
-    .toolbar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .filter-group {
-        justify-content: center;
-    }
-}
-
-@media (max-width: 700px) {
-    .header {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .stats {
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-
-    .board {
-        grid-template-columns: 1fr;
-    }
-
-    .modal-content {
-        padding: 24px;
-        width: 95%;
-    }
-
-    .modal-large {
-        max-width: 95%;
-    }
-
-    .subtask-input-row {
-        flex-wrap: wrap;
-    }
-
-    .auth-box {
-        padding: 24px 20px;
-    }
-
-    .auth-page .circle-decoration {
-        display: none;
-    }
 }
 
 /* ============================================================
@@ -1104,26 +1145,6 @@ body {
     color: #ff4d4f;
 }
 
-/* Responsividade do filtro */
-@media (max-width: 850px) {
-    .filter-responsavel {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .filter-responsavel select {
-        flex: 1;
-        max-width: 200px;
-    }
-}
-
-/* Tag Assistência Técnica */
-.tag.assistencia {
-    background: #e3f2fd;
-    color: #1565C0;
-    font-weight: 600;
-}
-
 /* Estatística da assistência */
 #totalTasksAssist {
     color: #2196F3;
@@ -1140,118 +1161,6 @@ body {
 #overdueTasksAssist {
     color: #ff4d4f;
 }
-
-/* ============================================================
-   BADGES DE STATUS - ADMIN
-   ============================================================ */
-
-.badge-pendente {
-    background: #ff9800;
-    color: white;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.badge-aprovado {
-    background: #4CAF50;
-    color: white;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.badge-rejeitado {
-    background: #f44336;
-    color: white;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.btn-success {
-    background: #4CAF50;
-    color: white;
-    padding: 4px 12px;
-    border: none;
-    border-radius: 4px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: 0.2s;
-    margin-right: 4px;
-}
-
-.btn-success:hover {
-    background: #388E3C;
-    transform: scale(1.05);
-}
-
-.btn-danger {
-    background: #f44336;
-    color: white;
-    padding: 4px 12px;
-    border: none;
-    border-radius: 4px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: 0.2s;
-}
-
-.btn-danger:hover {
-    background: #d32f2f;
-    transform: scale(1.05);
-}
-
-.btn-success.btn-sm,
-.btn-danger.btn-sm {
-    padding: 4px 10px;
-    font-size: 11px;
-}
-
-/* style.css - Adicione no final do arquivo */
-
-/* ============================================================
-   SELECT MÚLTIPLO - RESPONSÁVEIS
-   ============================================================ */
-
-select[multiple] {
-    padding: 8px 12px;
-    border: 1.5px solid #e1e4e8;
-    border-radius: 8px;
-    font-size: 14px;
-    background: white;
-    cursor: pointer;
-    transition: 0.2s;
-    min-height: 80px !important;
-    height: auto !important;
-    width: 100%;
-}
-
-select[multiple]:focus {
-    outline: none;
-    border-color: #F57C00;
-    box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.15);
-}
-
-select[multiple] option {
-    padding: 6px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-select[multiple] option:checked {
-    background: #F57C00 linear-gradient(0deg, #F57C00 0%, #F57C00 100%);
-    color: white;
-}
-
-select[multiple] option:hover {
-    background: #fff3e0;
-}
-
-/* style.css - Adicione no final do arquivo */
 
 /* ============================================================
    PESQUISA POR TÍTULO
@@ -1291,45 +1200,42 @@ select[multiple] option:hover {
     white-space: nowrap;
 }
 
-/* Responsividade da pesquisa */
-@media (max-width: 850px) {
-    .search-container {
-        max-width: 100%;
-        width: 100%;
-    }
-}
-
-@media (max-width: 700px) {
-    .search-container {
-        flex-wrap: wrap;
-    }
-
-    .search-input {
-        flex: 1;
-        min-width: 120px;
-    }
-
-    #clearSearchBtn {
-        flex-shrink: 0;
-    }
-}
-
-/* style.css - Adicione no final */
-
 /* ============================================================
-   MENSAGEM DE SUCESSO (Recuperação de senha)
+   SELECT MÚLTIPLO - RESPONSÁVEIS
    ============================================================ */
 
-.auth-success {
-    background: rgba(232, 245, 233, 0.95);
-    color: #2e7d32;
-    padding: 12px 16px;
+select[multiple] {
+    padding: 8px 12px;
+    border: 1.5px solid #e1e4e8;
     border-radius: 8px;
-    margin-bottom: 16px;
     font-size: 14px;
-    border-left: 4px solid #2e7d32;
-    backdrop-filter: blur(4px);
-    animation: fadeIn 0.3s ease;
+    background: white;
+    cursor: pointer;
+    transition: 0.2s;
+    min-height: 80px !important;
+    height: auto !important;
+    width: 100%;
+}
+
+select[multiple]:focus {
+    outline: none;
+    border-color: #F57C00;
+    box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.15);
+}
+
+select[multiple] option {
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+select[multiple] option:checked {
+    background: #F57C00 linear-gradient(0deg, #F57C00 0%, #F57C00 100%);
+    color: white;
+}
+
+select[multiple] option:hover {
+    background: #fff3e0;
 }
 
 /* ============================================================
@@ -1346,6 +1252,20 @@ select[multiple] option:hover {
     flex-direction: column;
     align-items: center;
     gap: 12px;
+}
+
+.pagination-top {
+    margin-bottom: 24px;
+    margin-top: 0;
+}
+
+.pagination-bottom {
+    margin-top: 24px;
+    margin-bottom: 0;
+}
+
+.pagination-container.hidden {
+    display: none !important;
 }
 
 .pagination-controls {
@@ -1403,8 +1323,163 @@ select[multiple] option:hover {
     cursor: not-allowed;
 }
 
-/* Responsividade */
+/* ============================================================
+   ORDENAÇÃO
+   ============================================================ */
+
+.sort-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 8px;
+}
+
+.sort-container label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #4a4a4a;
+    white-space: nowrap;
+}
+
+.sort-container select {
+    padding: 6px 12px;
+    border: 1.5px solid #e1e4e8;
+    border-radius: 8px;
+    font-size: 13px;
+    background: white;
+    cursor: pointer;
+    transition: 0.2s;
+    min-width: 140px;
+}
+
+.sort-container select:focus {
+    outline: none;
+    border-color: #F57C00;
+    box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.15);
+}
+
+/* ============================================================
+   AGUARDANDO APROVAÇÃO - ESTILOS
+   ============================================================ */
+
+.column[data-status="approval"] .column-title {
+    color: #F57C00;
+}
+
+.column[data-status="approval"] .column-title .column-count {
+    background: #fff3e0;
+    color: #F57C00;
+}
+
+.column[data-status="approval"] .task-card {
+    border-left-color: #F57C00;
+    background: #fffde7;
+}
+
+/* ============================================================
+   RESPONSIVIDADE
+   ============================================================ */
+@media (max-width: 1200px) {
+    .board {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 850px) {
+    .header-right {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .user-info {
+        justify-content: center;
+    }
+
+    .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filter-group {
+        justify-content: center;
+    }
+
+    .filter-responsavel {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .filter-responsavel select {
+        flex: 1;
+        max-width: 200px;
+    }
+
+    .search-container {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .sort-container {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .sort-container select {
+        flex: 1;
+        max-width: 200px;
+    }
+}
+
 @media (max-width: 700px) {
+    .header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .stats {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .board {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-content {
+        padding: 24px;
+        width: 95%;
+    }
+
+    .modal-large {
+        max-width: 95%;
+    }
+
+    .subtask-input-row {
+        flex-wrap: wrap;
+    }
+
+    .auth-box {
+        padding: 24px 20px;
+    }
+
+    .auth-page .circle-decoration {
+        display: none;
+    }
+
+    .search-container {
+        flex-wrap: wrap;
+    }
+
+    .search-input {
+        flex: 1;
+        min-width: 120px;
+    }
+
+    #clearSearchBtn {
+        flex-shrink: 0;
+    }
+
     .pagination-controls {
         flex-wrap: wrap;
         justify-content: center;
@@ -1420,206 +1495,4 @@ select[multiple] option:hover {
         font-size: 12px;
         min-width: 28px;
     }
-}
-
-/* ============================================================
-   ORDENAÇÃO
-   ============================================================ */
-
-.sort-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-left: 8px;
-}
-
-.sort-container label {
-    font-size: 13px;
-    font-weight: 500;
-    color: #4a4a4a;
-    white-space: nowrap;
-}
-
-.sort-container select {
-    padding: 6px 12px;
-    border: 1.5px solid #e1e4e8;
-    border-radius: 8px;
-    font-size: 13px;
-    background: white;
-    cursor: pointer;
-    transition: 0.2s;
-    min-width: 140px;
-}
-
-.sort-container select:focus {
-    outline: none;
-    border-color: #F57C00;
-    box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.15);
-}
-
-/* Responsividade da ordenação */
-@media (max-width: 850px) {
-    .sort-container {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .sort-container select {
-        flex: 1;
-        max-width: 200px;
-    }
-}
-
-/* ============================================================
-   ORDENAÇÃO
-   ============================================================ */
-
-.sort-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-left: 8px;
-}
-
-.sort-container label {
-    font-size: 13px;
-    font-weight: 500;
-    color: #4a4a4a;
-    white-space: nowrap;
-}
-
-.sort-container select {
-    padding: 6px 12px;
-    border: 1.5px solid #e1e4e8;
-    border-radius: 8px;
-    font-size: 13px;
-    background: white;
-    cursor: pointer;
-    transition: 0.2s;
-    min-width: 140px;
-}
-
-.sort-container select:focus {
-    outline: none;
-    border-color: #F57C00;
-    box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.15);
-}
-
-/* Responsividade da ordenação */
-@media (max-width: 850px) {
-    .sort-container {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .sort-container select {
-        flex: 1;
-        max-width: 200px;
-    }
-}
-
-/* ============================================================
-   PAGINAÇÃO - TOPO E RODAPÉ
-   ============================================================ */
-
-.pagination-top {
-    margin-bottom: 24px;
-    margin-top: 0;
-}
-
-.pagination-bottom {
-    margin-top: 24px;
-    margin-bottom: 0;
-}
-
-/* Esconder a paginação se não houver tarefas */
-.pagination-container.hidden {
-    display: none !important;
-}
-
-/* Ajuste para telas pequenas */
-@media (max-width: 700px) {
-    .pagination-top {
-        margin-bottom: 16px;
-    }
-
-    .pagination-bottom {
-        margin-top: 16px;
-    }
-}
-
-/* ============================================================
-   AGUARDANDO APROVAÇÃO - ESTILOS
-   ============================================================ */
-
-/* Coluna Aguardando Aprovação */
-.column[data-status="approval"] .column-title {
-    color: #F57C00;
-}
-
-.column[data-status="approval"] .column-title .column-count {
-    background: #fff3e0;
-    color: #F57C00;
-}
-
-.column[data-status="approval"] .task-card {
-    border-left-color: #F57C00;
-    background: #fffde7;
-}
-
-/* Botões de aprovar/rejeitar */
-.approve-btn {
-    background: #4CAF50 !important;
-    color: white !important;
-    border-radius: 4px !important;
-    padding: 2px 6px !important;
-    font-size: 13px !important;
-}
-
-.approve-btn:hover {
-    background: #388E3C !important;
-    transform: scale(1.1);
-}
-
-.reject-btn {
-    background: #f44336 !important;
-    color: white !important;
-    border-radius: 4px !important;
-    padding: 2px 6px !important;
-    font-size: 13px !important;
-}
-
-.reject-btn:hover {
-    background: #d32f2f !important;
-    transform: scale(1.1);
-}
-
-/* Badge de status no card */
-.task-status-badge {
-    font-size: 10px;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-weight: 500;
-    display: inline-block;
-    margin-left: 6px;
-}
-
-.task-status-badge.approval {
-    background: #fff3e0;
-    color: #F57C00;
-}
-
-.task-status-badge.done {
-    background: #e8f5e9;
-    color: #2e7d32;
-}
-
-.task-status-badge.todo {
-    background: #e3f2fd;
-    color: #1565C0;
-}
-
-.task-status-badge.doing {
-    background: #fff8e1;
-    color: #F57C00;
 }
