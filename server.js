@@ -1,4 +1,4 @@
-// server.js - Versão com MySQL (persistente) - CORRIGIDO: extrai ID do usuário do token
+// server.js - Versão com MySQL (persistente) - CORRIGIDO: extrai ID do usuário do token e DATA DE PRAZO
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -167,11 +167,25 @@ async function getTarefasAssistencia() {
     }
 }
 
+// ============================================================
+//  CREATE TAREFA - CORRIGIDO: DATA DE PRAZO SEM FUSO HORÁRIO
+// ============================================================
+
 async function createTarefa(usuario_id, titulo, tag, subtarefas, responsaveis, prazo) {
     try {
+        // Garantir que prazo seja apenas a data (YYYY-MM-DD)
+        let prazoFormatado = null;
+        if (prazo) {
+            if (typeof prazo === 'string' && prazo.includes('T')) {
+                prazoFormatado = prazo.split('T')[0];
+            } else {
+                prazoFormatado = prazo;
+            }
+        }
+
         const [result] = await db.query(
             'INSERT INTO tarefas (usuario_id, titulo, tag, prazo) VALUES (?, ?, ?, ?)',
-            [usuario_id, titulo, tag || '', prazo || null]
+            [usuario_id, titulo, tag || '', prazoFormatado]
         );
         const tarefaId = result.insertId;
 
@@ -196,11 +210,24 @@ async function createTarefa(usuario_id, titulo, tag, subtarefas, responsaveis, p
     }
 }
 
+// ============================================================
+//  UPDATE TAREFA - CORRIGIDO: DATA DE PRAZO SEM FUSO HORÁRIO
+// ============================================================
+
 async function updateTarefa(id, titulo, tag, subtarefas, responsaveis, prazo) {
     try {
+        let prazoFormatado = null;
+        if (prazo) {
+            if (typeof prazo === 'string' && prazo.includes('T')) {
+                prazoFormatado = prazo.split('T')[0];
+            } else {
+                prazoFormatado = prazo;
+            }
+        }
+
         await db.query(
             'UPDATE tarefas SET titulo = ?, tag = ?, prazo = ? WHERE id = ?',
-            [titulo, tag || '', prazo || null, id]
+            [titulo, tag || '', prazoFormatado, id]
         );
 
         await db.query('DELETE FROM subtarefas WHERE tarefa_id = ?', [id]);

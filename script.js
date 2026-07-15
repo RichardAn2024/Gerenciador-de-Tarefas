@@ -1,6 +1,6 @@
 /* ============================================================
    script.js - Lógica completa do Dashboard 
-   (COM CORREÇÃO DA DATA DE PRAZO)
+   (COM CORREÇÃO DA DATA DE PRAZO - VERSÃO FINAL)
    ============================================================ */
 
 // --- Estado ---
@@ -425,19 +425,12 @@ function addPageNumberToContainer(container, page) {
 }
 
 // ============================================================
-//  FUNÇÃO PARA AJUSTAR DATA AO FUSO LOCAL (CORREÇÃO)
+//  FUNÇÃO PARA AJUSTAR DATA - RETORNA A MESMA STRING
 // ============================================================
 
 function ajustarDataParaLocal(dataStr) {
-    if (!dataStr) return null;
-    // A data vem no formato YYYY-MM-DD
-    const partes = dataStr.split('-');
-    const ano = parseInt(partes[0]);
-    const mes = parseInt(partes[1]) - 1;
-    const dia = parseInt(partes[2]);
-    // Criar data no fuso local (meio-dia para evitar problemas)
-    const data = new Date(ano, mes, dia, 12, 0, 0);
-    return data.toISOString().split('T')[0]; // Retorna YYYY-MM-DD
+    // Retorna a data exatamente como foi selecionada (YYYY-MM-DD)
+    return dataStr;
 }
 
 // ============================================================
@@ -889,9 +882,8 @@ async function createTask() {
         .map(opt => parseInt(opt.value))
         .filter(id => !isNaN(id) && id > 0);
 
-    // CORRIGIDO: Ajustar a data para o fuso local
-    const prazoRaw = createPrazo.value;
-    const prazo = prazoRaw ? ajustarDataParaLocal(prazoRaw) : null;
+    // Pega a data exatamente como selecionada (YYYY-MM-DD)
+    const prazo = createPrazo.value || null;
 
     const subtarefas = getSubtasksFromContainer(subtaskList);
 
@@ -952,10 +944,8 @@ async function salvarEdicaoComVerificacao() {
         .map(opt => parseInt(opt.value))
         .filter(id => !isNaN(id) && id > 0);
 
-    // CORRIGIDO: Ajustar a data para o fuso local
-    const prazoRaw = editPrazo.value;
-    const prazo = prazoRaw ? ajustarDataParaLocal(prazoRaw) : null;
-
+    // Pega a data exatamente como selecionada (YYYY-MM-DD)
+    const prazo = editPrazo.value || null;
     const subtarefas = getEditSubtasks();
 
     try {
@@ -1059,19 +1049,29 @@ function updateStats() {
 }
 
 // ============================================================
-//  FORMATAR DATA - CORRIGIDO
+//  FORMATAR DATA - CORRIGIDO (APENAS DATA, SEM HORA)
 // ============================================================
 
 function formatarData(dataStr) {
     if (!dataStr) return 'Sem data';
-    const data = new Date(dataStr);
-    // Ajustar para o fuso local
-    const dia = String(data.getDate()).padStart(2, '0');
-    const mes = String(data.getMonth() + 1).padStart(2, '0');
-    const ano = data.getFullYear();
-    const horas = String(data.getHours()).padStart(2, '0');
-    const minutos = String(data.getMinutes()).padStart(2, '0');
-    return `${dia}/${mes}/${ano} ${horas}:${minutos}`;
+
+    // Se for uma data ISO (YYYY-MM-DD), exibir apenas a data
+    if (dataStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const partes = dataStr.split('-');
+        return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    }
+
+    // Caso contrário, tentar parse normal
+    try {
+        const data = new Date(dataStr);
+        if (isNaN(data.getTime())) return dataStr;
+        const dia = String(data.getDate()).padStart(2, '0');
+        const mes = String(data.getMonth() + 1).padStart(2, '0');
+        const ano = data.getFullYear();
+        return `${dia}/${mes}/${ano}`;
+    } catch {
+        return dataStr;
+    }
 }
 
 // ============================================================
