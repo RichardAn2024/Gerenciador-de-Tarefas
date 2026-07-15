@@ -93,6 +93,16 @@
             <button class="btn btn-outline" id="clearAllBtn">🗑️ Limpar tudo</button>
         </div>
 
+        <!-- ===== PAGINAÇÃO - TOPO ===== -->
+        <div class="pagination-container pagination-top" id="paginationContainerTop">
+            <div class="pagination-controls">
+                <button class="btn btn-outline btn-sm" id="prevPageBtnTop" disabled>◀ Anterior</button>
+                <span class="pagination-info" id="paginationInfoTop">Página 1 de 1</span>
+                <button class="btn btn-outline btn-sm" id="nextPageBtnTop" disabled>Próximo ▶</button>
+            </div>
+            <div class="page-numbers" id="pageNumbersTop"></div>
+        </div>
+
         <!-- ===== Board ===== -->
         <div class="board" id="board">
             <div class="column" data-status="todo">
@@ -117,14 +127,14 @@
             </div>
         </div>
 
-        <!-- ===== PAGINAÇÃO ===== -->
-        <div class="pagination-container" id="paginationContainer">
+        <!-- ===== PAGINAÇÃO - RODAPÉ ===== -->
+        <div class="pagination-container pagination-bottom" id="paginationContainerBottom">
             <div class="pagination-controls">
-                <button class="btn btn-outline btn-sm" id="prevPageBtn" disabled>◀ Anterior</button>
-                <span class="pagination-info" id="paginationInfo">Página 1 de 1</span>
-                <button class="btn btn-outline btn-sm" id="nextPageBtn" disabled>Próximo ▶</button>
+                <button class="btn btn-outline btn-sm" id="prevPageBtnBottom" disabled>◀ Anterior</button>
+                <span class="pagination-info" id="paginationInfoBottom">Página 1 de 1</span>
+                <button class="btn btn-outline btn-sm" id="nextPageBtnBottom" disabled>Próximo ▶</button>
             </div>
-            <div class="page-numbers" id="pageNumbers"></div>
+            <div class="page-numbers" id="pageNumbersBottom"></div>
         </div>
 
     </div>

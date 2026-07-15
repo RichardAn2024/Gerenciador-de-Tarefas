@@ -1517,3 +1517,33 @@ select[multiple] option:hover {
         max-width: 200px;
     }
 }
+
+/* ============================================================
+   PAGINAÇÃO - TOPO E RODAPÉ
+   ============================================================ */
+
+.pagination-top {
+    margin-bottom: 24px;
+    margin-top: 0;
+}
+
+.pagination-bottom {
+    margin-top: 24px;
+    margin-bottom: 0;
+}
+
+/* Esconder a paginação se não houver tarefas */
+.pagination-container.hidden {
+    display: none !important;
+}
+
+/* Ajuste para telas pequenas */
+@media (max-width: 700px) {
+    .pagination-top {
+        margin-bottom: 16px;
+    }
+
+    .pagination-bottom {
+        margin-top: 16px;
+    }
+}

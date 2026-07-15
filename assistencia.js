@@ -1,6 +1,6 @@
 /* ============================================================
    assistencia.js - Lógica da página de Assistência Técnica
-   (10 tarefas por coluna por página)
+   (Paginação no Topo e Rodapé)
    ============================================================ */
 
 // --- Estado ---
@@ -308,52 +308,81 @@ function getPaginatedTasks(filteredTasks) {
     return result;
 }
 
-function renderPagination(totalTasks) {
-    const container = document.getElementById('paginationContainer');
-    const prevBtn = document.getElementById('prevPageBtn');
-    const nextBtn = document.getElementById('nextPageBtn');
-    const info = document.getElementById('paginationInfo');
-    const pageNumbers = document.getElementById('pageNumbers');
+// ============================================================
+//  PAGINAÇÃO - TOPO E RODAPÉ
+// ============================================================
 
-    if (!container) return;
+function renderPagination(totalTasks) {
+    const containers = [
+        {
+            container: document.getElementById('paginationContainerTop'),
+            info: document.getElementById('paginationInfoTop'),
+            prevBtn: document.getElementById('prevPageBtnTop'),
+            nextBtn: document.getElementById('nextPageBtnTop'),
+            pageNumbers: document.getElementById('pageNumbersTop')
+        },
+        {
+            container: document.getElementById('paginationContainerBottom'),
+            info: document.getElementById('paginationInfoBottom'),
+            prevBtn: document.getElementById('prevPageBtnBottom'),
+            nextBtn: document.getElementById('nextPageBtnBottom'),
+            pageNumbers: document.getElementById('pageNumbersBottom')
+        }
+    ];
 
     if (totalTasks === 0) {
-        container.style.display = 'none';
+        containers.forEach(c => {
+            if (c.container) c.container.style.display = 'none';
+        });
         return;
     }
 
-    container.style.display = 'flex';
+    containers.forEach(c => {
+        if (c.container) c.container.style.display = 'flex';
+    });
 
-    info.textContent = `Página ${currentPage} de ${totalPages}`;
+    containers.forEach(c => {
+        if (!c.info) return;
 
-    prevBtn.disabled = currentPage <= 1;
-    nextBtn.disabled = currentPage >= totalPages;
+        c.info.textContent = `Página ${currentPage} de ${totalPages}`;
 
-    pageNumbers.innerHTML = '';
+        if (c.prevBtn) c.prevBtn.disabled = currentPage <= 1;
+        if (c.nextBtn) c.nextBtn.disabled = currentPage >= totalPages;
 
-    let startPage = Math.max(1, currentPage - 3);
-    let endPage = Math.min(totalPages, currentPage + 3);
+        if (c.pageNumbers) {
+            c.pageNumbers.innerHTML = '';
 
-    if (currentPage <= 3) {
-        endPage = Math.min(totalPages, 7);
-    }
+            let startPage = Math.max(1, currentPage - 3);
+            let endPage = Math.min(totalPages, currentPage + 3);
 
-    if (currentPage >= totalPages - 2) {
-        startPage = Math.max(1, totalPages - 6);
-    }
+            if (currentPage <= 3) {
+                endPage = Math.min(totalPages, 7);
+            }
+
+            if (currentPage >= totalPages - 2) {
+                startPage = Math.max(1, totalPages - 6);
+            }
+
+            addPageNumbersToContainer(c.pageNumbers, startPage, endPage);
+        }
+    });
+}
+
+function addPageNumbersToContainer(container, startPage, endPage) {
+    if (!container) return;
 
     if (startPage > 1) {
-        addPageNumber(1);
+        addPageNumberToContainer(container, 1);
         if (startPage > 2) {
             const dots = document.createElement('span');
             dots.textContent = '…';
             dots.style.cssText = 'padding: 4px 8px; color: #8c929a;';
-            pageNumbers.appendChild(dots);
+            container.appendChild(dots);
         }
     }
 
     for (let i = startPage; i <= endPage; i++) {
-        addPageNumber(i);
+        addPageNumberToContainer(container, i);
     }
 
     if (endPage < totalPages) {
@@ -361,14 +390,13 @@ function renderPagination(totalTasks) {
             const dots = document.createElement('span');
             dots.textContent = '…';
             dots.style.cssText = 'padding: 4px 8px; color: #8c929a;';
-            pageNumbers.appendChild(dots);
+            container.appendChild(dots);
         }
-        addPageNumber(totalPages);
+        addPageNumberToContainer(container, totalPages);
     }
 }
 
-function addPageNumber(page) {
-    const pageNumbers = document.getElementById('pageNumbers');
+function addPageNumberToContainer(container, page) {
     const btn = document.createElement('button');
     btn.className = `page-number-btn${page === currentPage ? ' active' : ''}`;
     btn.textContent = page;
@@ -376,7 +404,7 @@ function addPageNumber(page) {
         currentPage = page;
         render();
     });
-    pageNumbers.appendChild(btn);
+    container.appendChild(btn);
 }
 
 // ============================================================
@@ -1097,27 +1125,31 @@ function configurarEventos() {
         });
     }
 
-    // --- Paginação ---
-    const prevBtn = document.getElementById('prevPageBtn');
-    const nextBtn = document.getElementById('nextPageBtn');
+    // --- Paginação - Topo e Rodapé ---
+    const prevBtns = document.querySelectorAll('#prevPageBtnTop, #prevPageBtnBottom');
+    const nextBtns = document.querySelectorAll('#nextPageBtnTop, #nextPageBtnBottom');
 
-    if (prevBtn) {
-        prevBtn.addEventListener('click', () => {
-            if (currentPage > 1) {
-                currentPage--;
-                render();
-            }
-        });
-    }
+    prevBtns.forEach(btn => {
+        if (btn) {
+            btn.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    render();
+                }
+            });
+        }
+    });
 
-    if (nextBtn) {
-        nextBtn.addEventListener('click', () => {
-            if (currentPage < totalPages) {
-                currentPage++;
-                render();
-            }
-        });
-    }
+    nextBtns.forEach(btn => {
+        if (btn) {
+            btn.addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    render();
+                }
+            });
+        }
+    });
 
     // --- Fechar com ESC ---
     document.addEventListener('keydown', (e) => {
