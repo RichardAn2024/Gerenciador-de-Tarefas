@@ -1,6 +1,6 @@
 /* ============================================================
    assistencia.js - Lógica da página de Assistência Técnica
-   (Paginação no Topo e Rodapé)
+   (COM CORREÇÃO DA DATA DE PRAZO)
    ============================================================ */
 
 // --- Estado ---
@@ -405,6 +405,20 @@ function addPageNumberToContainer(container, page) {
         render();
     });
     container.appendChild(btn);
+}
+
+// ============================================================
+//  FUNÇÃO PARA AJUSTAR DATA AO FUSO LOCAL (CORREÇÃO)
+// ============================================================
+
+function ajustarDataParaLocal(dataStr) {
+    if (!dataStr) return null;
+    const partes = dataStr.split('-');
+    const ano = parseInt(partes[0]);
+    const mes = parseInt(partes[1]) - 1;
+    const dia = parseInt(partes[2]);
+    const data = new Date(ano, mes, dia, 12, 0, 0);
+    return data.toISOString().split('T')[0];
 }
 
 // ============================================================
@@ -843,7 +857,7 @@ function getEditSubtasks() {
 }
 
 // ============================================================
-//  CRIAR TAREFA
+//  CRIAR TAREFA - CORRIGIDO (DATA DE PRAZO)
 // ============================================================
 
 async function createTask() {
@@ -857,7 +871,11 @@ async function createTask() {
     const responsaveis = Array.from(createResponsaveis.selectedOptions)
         .map(opt => parseInt(opt.value))
         .filter(id => !isNaN(id) && id > 0);
-    const prazo = createPrazo.value || null;
+
+    // CORRIGIDO: Ajustar a data para o fuso local
+    const prazoRaw = createPrazo.value;
+    const prazo = prazoRaw ? ajustarDataParaLocal(prazoRaw) : null;
+
     const subtarefas = getSubtasksFromContainer(subtaskList);
 
     try {
@@ -871,7 +889,7 @@ async function createTask() {
 }
 
 // ============================================================
-//  EDIÇÃO DE TAREFAS
+//  EDIÇÃO DE TAREFAS - CORRIGIDO (DATA DE PRAZO)
 // ============================================================
 
 function openEditModal(taskId) {
@@ -916,7 +934,11 @@ async function salvarEdicaoComVerificacao() {
     const responsaveis = Array.from(editResponsaveis.selectedOptions)
         .map(opt => parseInt(opt.value))
         .filter(id => !isNaN(id) && id > 0);
-    const prazo = editPrazo.value || null;
+
+    // CORRIGIDO: Ajustar a data para o fuso local
+    const prazoRaw = editPrazo.value;
+    const prazo = prazoRaw ? ajustarDataParaLocal(prazoRaw) : null;
+
     const subtarefas = getEditSubtasks();
 
     try {
@@ -1012,6 +1034,10 @@ function updateStats() {
     document.getElementById('pendingTasksAssist').textContent = pending;
     document.getElementById('overdueTasksAssist').textContent = overdue;
 }
+
+// ============================================================
+//  FORMATAR DATA - CORRIGIDO
+// ============================================================
 
 function formatarData(dataStr) {
     if (!dataStr) return 'Sem data';

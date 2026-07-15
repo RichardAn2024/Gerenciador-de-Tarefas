@@ -1,6 +1,6 @@
 /* ============================================================
    script.js - Lógica completa do Dashboard 
-   (Paginação no Topo e Rodapé)
+   (COM CORREÇÃO DA DATA DE PRAZO)
    ============================================================ */
 
 // --- Estado ---
@@ -422,6 +422,22 @@ function addPageNumberToContainer(container, page) {
         render();
     });
     container.appendChild(btn);
+}
+
+// ============================================================
+//  FUNÇÃO PARA AJUSTAR DATA AO FUSO LOCAL (CORREÇÃO)
+// ============================================================
+
+function ajustarDataParaLocal(dataStr) {
+    if (!dataStr) return null;
+    // A data vem no formato YYYY-MM-DD
+    const partes = dataStr.split('-');
+    const ano = parseInt(partes[0]);
+    const mes = parseInt(partes[1]) - 1;
+    const dia = parseInt(partes[2]);
+    // Criar data no fuso local (meio-dia para evitar problemas)
+    const data = new Date(ano, mes, dia, 12, 0, 0);
+    return data.toISOString().split('T')[0]; // Retorna YYYY-MM-DD
 }
 
 // ============================================================
@@ -858,7 +874,7 @@ function getEditSubtasks() {
 }
 
 // ============================================================
-//  CRIAR TAREFA
+//  CRIAR TAREFA - CORRIGIDO (DATA DE PRAZO)
 // ============================================================
 
 async function createTask() {
@@ -872,7 +888,11 @@ async function createTask() {
     const responsaveis = Array.from(createResponsaveis.selectedOptions)
         .map(opt => parseInt(opt.value))
         .filter(id => !isNaN(id) && id > 0);
-    const prazo = createPrazo.value || null;
+
+    // CORRIGIDO: Ajustar a data para o fuso local
+    const prazoRaw = createPrazo.value;
+    const prazo = prazoRaw ? ajustarDataParaLocal(prazoRaw) : null;
+
     const subtarefas = getSubtasksFromContainer(subtaskList);
 
     try {
@@ -886,7 +906,7 @@ async function createTask() {
 }
 
 // ============================================================
-//  EDIÇÃO DE TAREFAS
+//  EDIÇÃO DE TAREFAS - CORRIGIDO (DATA DE PRAZO)
 // ============================================================
 
 function openEditModal(taskId) {
@@ -931,7 +951,11 @@ async function salvarEdicaoComVerificacao() {
     const responsaveis = Array.from(editResponsaveis.selectedOptions)
         .map(opt => parseInt(opt.value))
         .filter(id => !isNaN(id) && id > 0);
-    const prazo = editPrazo.value || null;
+
+    // CORRIGIDO: Ajustar a data para o fuso local
+    const prazoRaw = editPrazo.value;
+    const prazo = prazoRaw ? ajustarDataParaLocal(prazoRaw) : null;
+
     const subtarefas = getEditSubtasks();
 
     try {
@@ -1034,9 +1058,14 @@ function updateStats() {
     document.getElementById('overdueTasks').textContent = overdue;
 }
 
+// ============================================================
+//  FORMATAR DATA - CORRIGIDO
+// ============================================================
+
 function formatarData(dataStr) {
     if (!dataStr) return 'Sem data';
     const data = new Date(dataStr);
+    // Ajustar para o fuso local
     const dia = String(data.getDate()).padStart(2, '0');
     const mes = String(data.getMonth() + 1).padStart(2, '0');
     const ano = data.getFullYear();
