@@ -1,6 +1,6 @@
 /* ============================================================
    script.js - Lógica completa do Dashboard 
-   (COM DISTRIBUIÇÃO DE TAREFAS FILTRADAS)
+   (COM DISTRIBUIÇÃO DE TAREFAS FILTRADAS E OCULTAÇÃO DE TÍTULOS)
    ============================================================ */
 
 // --- Estado ---
@@ -215,6 +215,31 @@ function sortTasks(tasks) {
 }
 
 // ============================================================
+//  CONTROLE DE VISIBILIDADE DOS TÍTULOS DAS COLUNAS
+// ============================================================
+
+function updateColumnHeadersVisibility() {
+    const hasStatusFilter = currentFilter !== 'all';
+
+    document.querySelectorAll('.column').forEach(column => {
+        const columnStatus = column.dataset.status;
+        const header = column.querySelector('.column-header');
+
+        if (!header) return;
+
+        if (hasStatusFilter) {
+            if (columnStatus === currentFilter) {
+                header.style.display = 'flex';
+            } else {
+                header.style.display = 'none';
+            }
+        } else {
+            header.style.display = 'flex';
+        }
+    });
+}
+
+// ============================================================
 //  RENDERIZAÇÃO - COM DISTRIBUIÇÃO DE TAREFAS FILTRADAS
 // ============================================================
 
@@ -308,6 +333,9 @@ function render() {
             });
         }
     }
+
+    // Atualizar visibilidade dos cabeçalhos
+    updateColumnHeadersVisibility();
 
     renderPagination(filtered.length);
     updateCounters();
