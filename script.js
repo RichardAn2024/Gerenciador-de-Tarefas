@@ -1,6 +1,6 @@
 /* ============================================================
    script.js - Lógica completa do Dashboard 
-   (COM AGUARDANDO APROVAÇÃO)
+   (COM DISTRIBUIÇÃO DE TAREFAS FILTRADAS)
    ============================================================ */
 
 // --- Estado ---
@@ -215,7 +215,7 @@ function sortTasks(tasks) {
 }
 
 // ============================================================
-//  RENDERIZAÇÃO
+//  RENDERIZAÇÃO - COM DISTRIBUIÇÃO DE TAREFAS FILTRADAS
 // ============================================================
 
 function render() {
@@ -245,7 +245,7 @@ function render() {
     // Ordenação
     filtered = sortTasks(filtered);
 
-    // Paginação - 10 por coluna
+    // Paginação
     const paginatedTasks = getPaginatedTasks(filtered);
 
     // Limpar listas
@@ -254,28 +254,59 @@ function render() {
         list.innerHTML = '';
     }
 
-    // Preencher colunas
-    for (const status of ['todo', 'doing', 'approval', 'done']) {
-        const list = document.getElementById(statusMap[status].listId);
-        const tasksInStatus = paginatedTasks.filter(t => t.status === status);
+    // Verificar se há um filtro de status específico
+    const hasStatusFilter = currentFilter !== 'all';
+    const statusFilter = hasStatusFilter ? currentFilter : null;
 
-        if (tasksInStatus.length === 0) {
-            const empty = document.createElement('div');
-            empty.className = 'empty-state';
+    // Se houver filtro de status, distribuir as tarefas pelas colunas
+    if (hasStatusFilter && filtered.length > 0) {
+        // Distribuir tarefas igualmente entre as 4 colunas
+        const columns = ['todo', 'doing', 'approval', 'done'];
+        const tasksPerCol = Math.ceil(filtered.length / columns.length);
 
-            if (currentSearchTerm.trim() !== '') {
-                empty.textContent = `Nenhuma tarefa encontrada para "${currentSearchTerm}"`;
-            } else {
+        columns.forEach((status, index) => {
+            const list = document.getElementById(statusMap[status].listId);
+            const start = index * tasksPerCol;
+            const end = Math.min(start + tasksPerCol, filtered.length);
+            const tasksForColumn = filtered.slice(start, end);
+
+            if (tasksForColumn.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'empty-state';
                 empty.textContent = 'Nenhuma tarefa aqui';
+                list.appendChild(empty);
+                return;
             }
-            list.appendChild(empty);
-            continue;
-        }
 
-        tasksInStatus.forEach(task => {
-            const card = createTaskCard(task);
-            list.appendChild(card);
+            tasksForColumn.forEach(task => {
+                const card = createTaskCard(task);
+                list.appendChild(card);
+            });
         });
+    } else {
+        // Comportamento normal: cada coluna mostra suas próprias tarefas
+        for (const status of ['todo', 'doing', 'approval', 'done']) {
+            const list = document.getElementById(statusMap[status].listId);
+            const tasksInStatus = paginatedTasks.filter(t => t.status === status);
+
+            if (tasksInStatus.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'empty-state';
+
+                if (currentSearchTerm.trim() !== '') {
+                    empty.textContent = `Nenhuma tarefa encontrada para "${currentSearchTerm}"`;
+                } else {
+                    empty.textContent = 'Nenhuma tarefa aqui';
+                }
+                list.appendChild(empty);
+                continue;
+            }
+
+            tasksInStatus.forEach(task => {
+                const card = createTaskCard(task);
+                list.appendChild(card);
+            });
+        }
     }
 
     renderPagination(filtered.length);
@@ -445,7 +476,6 @@ function createTaskCard(task) {
     card.draggable = true;
     card.dataset.id = task.id;
 
-    // Cores das bordas por status
     const borderColors = {
         todo: '#F57C00',
         doing: '#F57C00',
@@ -454,7 +484,6 @@ function createTaskCard(task) {
     };
     card.style.borderLeftColor = borderColors[task.status] || '#F57C00';
 
-    // Se for approval, fundo diferente
     if (task.status === 'approval') {
         card.style.background = '#fffde7';
     }
@@ -613,7 +642,6 @@ function createTaskCard(task) {
         moveTask(task.id, -1);
     });
 
-    // Botão Aprovar (só aparece se status for 'approval')
     if (task.status === 'approval') {
         const approveBtn = document.createElement('button');
         approveBtn.innerHTML = '✅';
@@ -628,7 +656,6 @@ function createTaskCard(task) {
         actions.appendChild(approveBtn);
     }
 
-    // Botão Rejeitar (só aparece se status for 'approval')
     if (task.status === 'approval') {
         const rejectBtn = document.createElement('button');
         rejectBtn.innerHTML = '❌';
@@ -707,7 +734,7 @@ document.querySelectorAll('.column').forEach(column => {
 });
 
 // ============================================================
-//  FUNÇÕES DE MANIPULAÇÃO - COM APPROVAL
+//  FUNÇÕES DE MANIPULAÇÃO
 // ============================================================
 
 async function moveTask(id, direction, targetStatus = null) {
@@ -733,7 +760,7 @@ async function moveTask(id, direction, targetStatus = null) {
 }
 
 // ============================================================
-//  VERIFICAR E ATUALIZAR STATUS DA TAREFA - COM APPROVAL
+//  VERIFICAR E ATUALIZAR STATUS DA TAREFA
 // ============================================================
 
 async function verificarEAtualizarStatusTarefa(taskId) {
@@ -748,9 +775,9 @@ async function verificarEAtualizarStatusTarefa(taskId) {
     let novoStatus = null;
 
     if (todasConcluidas && task.status !== 'approval' && task.status !== 'done') {
-        novoStatus = 'approval'; // Vai para aguardando aprovação
+        novoStatus = 'approval';
     } else if (todasConcluidas && task.status === 'approval') {
-        novoStatus = 'done'; // Vai para concluído
+        novoStatus = 'done';
     } else if (algumaConcluida && task.status === 'todo') {
         novoStatus = 'doing';
     } else if (!algumaConcluida && (task.status === 'doing' || task.status === 'approval')) {
