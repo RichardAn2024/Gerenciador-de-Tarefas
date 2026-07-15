@@ -51,13 +51,13 @@ async function inicializarBanco() {
         `);
         console.log('✅ Tabela usuarios criada/verificada');
 
-        // 2. Tabela de tarefas
+        // 2. Tabela de tarefas - COM STATUS APPROVAL
         await db.query(`
             CREATE TABLE IF NOT EXISTS tarefas (
                 id INT PRIMARY KEY AUTO_INCREMENT,
                 usuario_id INT NOT NULL,
                 titulo VARCHAR(255) NOT NULL,
-                status ENUM('todo', 'doing', 'done') DEFAULT 'todo',
+                status ENUM('todo', 'doing', 'approval', 'done') DEFAULT 'todo',
                 tag VARCHAR(50),
                 prazo DATE NULL,
                 data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -78,7 +78,7 @@ async function inicializarBanco() {
         `);
         console.log('✅ Tabela subtarefas criada/verificada');
 
-        // 4. NOVA TABELA: Responsáveis das tarefas (N:N)
+        // 4. Tabela de responsáveis
         await db.query(`
             CREATE TABLE IF NOT EXISTS tarefa_responsaveis (
                 id INT PRIMARY KEY AUTO_INCREMENT,

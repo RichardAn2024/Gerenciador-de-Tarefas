@@ -64,6 +64,7 @@
                 <button class="filter-btn active" data-filter="all">Todas</button>
                 <button class="filter-btn" data-filter="todo">A fazer</button>
                 <button class="filter-btn" data-filter="doing">Em andamento</button>
+                <button class="filter-btn" data-filter="approval">⏳ Aguardando Aprovação</button>
                 <button class="filter-btn" data-filter="done">Concluídas</button>
             </div>
 
@@ -117,6 +118,15 @@
                     <div class="column-title">⚡ Em Andamento <span class="column-count" id="count-doing">0</span></div>
                 </div>
                 <div class="task-list" id="list-doing"></div>
+            </div>
+
+            <!-- NOVA COLUNA -->
+            <div class="column" data-status="approval">
+                <div class="column-header">
+                    <div class="column-title">⏳ Aguardando Aprovação <span class="column-count"
+                            id="count-approval">0</span></div>
+                </div>
+                <div class="task-list" id="list-approval"></div>
             </div>
 
             <div class="column" data-status="done">

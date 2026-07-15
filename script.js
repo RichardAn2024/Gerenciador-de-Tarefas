@@ -1,6 +1,6 @@
 /* ============================================================
    script.js - Lógica completa do Dashboard 
-   (COM CORREÇÃO DA DATA DE PRAZO - VERSÃO FINAL)
+   (COM AGUARDANDO APROVAÇÃO)
    ============================================================ */
 
 // --- Estado ---
@@ -71,6 +71,7 @@ const closeConfirmBtn = document.getElementById('closeConfirmBtn');
 const statusMap = {
     todo: { listId: 'list-todo', countId: 'count-todo', label: 'A Fazer' },
     doing: { listId: 'list-doing', countId: 'count-doing', label: 'Em Andamento' },
+    approval: { listId: 'list-approval', countId: 'count-approval', label: 'Aguardando Aprovação' },
     done: { listId: 'list-done', countId: 'count-done', label: 'Concluído' },
 };
 
@@ -200,11 +201,11 @@ function sortTasks(tasks) {
         'titulo_asc': (a, b) => a.titulo.localeCompare(b.titulo),
         'titulo_desc': (a, b) => b.titulo.localeCompare(a.titulo),
         'status_asc': (a, b) => {
-            const order = { 'todo': 0, 'doing': 1, 'done': 2 };
+            const order = { 'todo': 0, 'doing': 1, 'approval': 2, 'done': 3 };
             return (order[a.status] || 0) - (order[b.status] || 0);
         },
         'status_desc': (a, b) => {
-            const order = { 'todo': 0, 'doing': 1, 'done': 2 };
+            const order = { 'todo': 0, 'doing': 1, 'approval': 2, 'done': 3 };
             return (order[b.status] || 0) - (order[a.status] || 0);
         }
     };
@@ -248,13 +249,13 @@ function render() {
     const paginatedTasks = getPaginatedTasks(filtered);
 
     // Limpar listas
-    for (const status of ['todo', 'doing', 'done']) {
+    for (const status of ['todo', 'doing', 'approval', 'done']) {
         const list = document.getElementById(statusMap[status].listId);
         list.innerHTML = '';
     }
 
     // Preencher colunas
-    for (const status of ['todo', 'doing', 'done']) {
+    for (const status of ['todo', 'doing', 'approval', 'done']) {
         const list = document.getElementById(statusMap[status].listId);
         const tasksInStatus = paginatedTasks.filter(t => t.status === status);
 
@@ -291,6 +292,7 @@ function getPaginatedTasks(filteredTasks) {
     const tasksByStatus = {
         todo: filteredTasks.filter(t => t.status === 'todo'),
         doing: filteredTasks.filter(t => t.status === 'doing'),
+        approval: filteredTasks.filter(t => t.status === 'approval'),
         done: filteredTasks.filter(t => t.status === 'done')
     };
 
@@ -298,6 +300,7 @@ function getPaginatedTasks(filteredTasks) {
     const maxTasksPerColumn = Math.max(
         tasksByStatus.todo.length,
         tasksByStatus.doing.length,
+        tasksByStatus.approval.length,
         tasksByStatus.done.length
     );
 
@@ -313,7 +316,7 @@ function getPaginatedTasks(filteredTasks) {
 
     const result = [];
 
-    for (const status of ['todo', 'doing', 'done']) {
+    for (const status of ['todo', 'doing', 'approval', 'done']) {
         const tasks = tasksByStatus[status] || [];
         const pageTasks = tasks.slice(startIndex, endIndex);
         result.push(...pageTasks);
@@ -429,7 +432,6 @@ function addPageNumberToContainer(container, page) {
 // ============================================================
 
 function ajustarDataParaLocal(dataStr) {
-    // Retorna a data exatamente como foi selecionada (YYYY-MM-DD)
     return dataStr;
 }
 
@@ -443,12 +445,19 @@ function createTaskCard(task) {
     card.draggable = true;
     card.dataset.id = task.id;
 
+    // Cores das bordas por status
     const borderColors = {
         todo: '#F57C00',
         doing: '#F57C00',
+        approval: '#F57C00',
         done: '#00a86b'
     };
     card.style.borderLeftColor = borderColors[task.status] || '#F57C00';
+
+    // Se for approval, fundo diferente
+    if (task.status === 'approval') {
+        card.style.background = '#fffde7';
+    }
 
     const isOverdue = task.prazo && task.status !== 'done' && new Date(task.prazo) < new Date();
     if (isOverdue) {
@@ -604,6 +613,36 @@ function createTaskCard(task) {
         moveTask(task.id, -1);
     });
 
+    // Botão Aprovar (só aparece se status for 'approval')
+    if (task.status === 'approval') {
+        const approveBtn = document.createElement('button');
+        approveBtn.innerHTML = '✅';
+        approveBtn.title = 'Aprovar tarefa';
+        approveBtn.className = 'approve-btn';
+        approveBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm('Aprovar esta tarefa?')) {
+                moveTask(task.id, 0, 'done');
+            }
+        });
+        actions.appendChild(approveBtn);
+    }
+
+    // Botão Rejeitar (só aparece se status for 'approval')
+    if (task.status === 'approval') {
+        const rejectBtn = document.createElement('button');
+        rejectBtn.innerHTML = '❌';
+        rejectBtn.title = 'Rejeitar tarefa';
+        rejectBtn.className = 'reject-btn';
+        rejectBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm('Rejeitar esta tarefa? Ela voltará para "Em Andamento".')) {
+                moveTask(task.id, 0, 'doing');
+            }
+        });
+        actions.appendChild(rejectBtn);
+    }
+
     const deleteBtn = document.createElement('button');
     deleteBtn.innerHTML = '🗑️';
     deleteBtn.className = 'delete-btn';
@@ -668,7 +707,7 @@ document.querySelectorAll('.column').forEach(column => {
 });
 
 // ============================================================
-//  FUNÇÕES DE MANIPULAÇÃO
+//  FUNÇÕES DE MANIPULAÇÃO - COM APPROVAL
 // ============================================================
 
 async function moveTask(id, direction, targetStatus = null) {
@@ -677,7 +716,7 @@ async function moveTask(id, direction, targetStatus = null) {
 
     let newStatus = targetStatus;
     if (!newStatus) {
-        const statusOrder = ['todo', 'doing', 'done'];
+        const statusOrder = ['todo', 'doing', 'approval', 'done'];
         const currentIndex = statusOrder.indexOf(task.status);
         const newIndex = currentIndex + direction;
         if (newIndex < 0 || newIndex >= statusOrder.length) return;
@@ -694,7 +733,7 @@ async function moveTask(id, direction, targetStatus = null) {
 }
 
 // ============================================================
-//  VERIFICAR E ATUALIZAR STATUS DA TAREFA
+//  VERIFICAR E ATUALIZAR STATUS DA TAREFA - COM APPROVAL
 // ============================================================
 
 async function verificarEAtualizarStatusTarefa(taskId) {
@@ -708,11 +747,13 @@ async function verificarEAtualizarStatusTarefa(taskId) {
 
     let novoStatus = null;
 
-    if (todasConcluidas) {
-        novoStatus = 'done';
-    } else if (algumaConcluida && task.status === 'done') {
+    if (todasConcluidas && task.status !== 'approval' && task.status !== 'done') {
+        novoStatus = 'approval'; // Vai para aguardando aprovação
+    } else if (todasConcluidas && task.status === 'approval') {
+        novoStatus = 'done'; // Vai para concluído
+    } else if (algumaConcluida && task.status === 'todo') {
         novoStatus = 'doing';
-    } else if (!algumaConcluida && (task.status === 'done' || task.status === 'doing')) {
+    } else if (!algumaConcluida && (task.status === 'doing' || task.status === 'approval')) {
         novoStatus = 'todo';
     }
 
@@ -867,7 +908,7 @@ function getEditSubtasks() {
 }
 
 // ============================================================
-//  CRIAR TAREFA - CORRIGIDO (DATA DE PRAZO)
+//  CRIAR TAREFA
 // ============================================================
 
 async function createTask() {
@@ -882,9 +923,7 @@ async function createTask() {
         .map(opt => parseInt(opt.value))
         .filter(id => !isNaN(id) && id > 0);
 
-    // Pega a data exatamente como selecionada (YYYY-MM-DD)
     const prazo = createPrazo.value || null;
-
     const subtarefas = getSubtasksFromContainer(subtaskList);
 
     try {
@@ -898,7 +937,7 @@ async function createTask() {
 }
 
 // ============================================================
-//  EDIÇÃO DE TAREFAS - CORRIGIDO (DATA DE PRAZO)
+//  EDIÇÃO DE TAREFAS
 // ============================================================
 
 function openEditModal(taskId) {
@@ -944,7 +983,6 @@ async function salvarEdicaoComVerificacao() {
         .map(opt => parseInt(opt.value))
         .filter(id => !isNaN(id) && id > 0);
 
-    // Pega a data exatamente como selecionada (YYYY-MM-DD)
     const prazo = editPrazo.value || null;
     const subtarefas = getEditSubtasks();
 
@@ -1027,7 +1065,7 @@ async function clearAllTasks() {
 // ============================================================
 
 function updateCounters() {
-    for (const status of ['todo', 'doing', 'done']) {
+    for (const status of ['todo', 'doing', 'approval', 'done']) {
         const count = tarefas.filter(t => t.status === status).length;
         const el = document.getElementById(statusMap[status].countId);
         if (el) el.textContent = count;
@@ -1049,19 +1087,17 @@ function updateStats() {
 }
 
 // ============================================================
-//  FORMATAR DATA - CORRIGIDO (APENAS DATA, SEM HORA)
+//  FORMATAR DATA
 // ============================================================
 
 function formatarData(dataStr) {
     if (!dataStr) return 'Sem data';
 
-    // Se for uma string no formato YYYY-MM-DD, exibir diretamente
-    if (typeof dataStr === 'string' && dataStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    if (dataStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const partes = dataStr.split('-');
         return `${partes[2]}/${partes[1]}/${partes[0]}`;
     }
 
-    // Se for um objeto Date ou string ISO, converter
     try {
         const data = new Date(dataStr);
         if (isNaN(data.getTime())) return dataStr;

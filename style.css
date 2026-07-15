@@ -1547,3 +1547,79 @@ select[multiple] option:hover {
         margin-top: 16px;
     }
 }
+
+/* ============================================================
+   AGUARDANDO APROVAÇÃO - ESTILOS
+   ============================================================ */
+
+/* Coluna Aguardando Aprovação */
+.column[data-status="approval"] .column-title {
+    color: #F57C00;
+}
+
+.column[data-status="approval"] .column-title .column-count {
+    background: #fff3e0;
+    color: #F57C00;
+}
+
+.column[data-status="approval"] .task-card {
+    border-left-color: #F57C00;
+    background: #fffde7;
+}
+
+/* Botões de aprovar/rejeitar */
+.approve-btn {
+    background: #4CAF50 !important;
+    color: white !important;
+    border-radius: 4px !important;
+    padding: 2px 6px !important;
+    font-size: 13px !important;
+}
+
+.approve-btn:hover {
+    background: #388E3C !important;
+    transform: scale(1.1);
+}
+
+.reject-btn {
+    background: #f44336 !important;
+    color: white !important;
+    border-radius: 4px !important;
+    padding: 2px 6px !important;
+    font-size: 13px !important;
+}
+
+.reject-btn:hover {
+    background: #d32f2f !important;
+    transform: scale(1.1);
+}
+
+/* Badge de status no card */
+.task-status-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+    display: inline-block;
+    margin-left: 6px;
+}
+
+.task-status-badge.approval {
+    background: #fff3e0;
+    color: #F57C00;
+}
+
+.task-status-badge.done {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.task-status-badge.todo {
+    background: #e3f2fd;
+    color: #1565C0;
+}
+
+.task-status-badge.doing {
+    background: #fff8e1;
+    color: #F57C00;
+}

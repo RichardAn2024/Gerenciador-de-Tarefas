@@ -1,6 +1,6 @@
 /* ============================================================
    assistencia.js - Lógica da página de Assistência Técnica
-   (COM CORREÇÃO DA DATA DE PRAZO)
+   (COM AGUARDANDO APROVAÇÃO)
    ============================================================ */
 
 // --- Estado ---
@@ -70,6 +70,7 @@ const closeConfirmBtn = document.getElementById('closeConfirmBtn');
 const statusMap = {
     todo: { listId: 'list-todo', countId: 'count-todo', label: 'A Fazer' },
     doing: { listId: 'list-doing', countId: 'count-doing', label: 'Em Andamento' },
+    approval: { listId: 'list-approval', countId: 'count-approval', label: 'Aguardando Aprovação' },
     done: { listId: 'list-done', countId: 'count-done', label: 'Concluído' },
 };
 
@@ -196,11 +197,11 @@ function sortTasks(tasks) {
         'titulo_asc': (a, b) => a.titulo.localeCompare(b.titulo),
         'titulo_desc': (a, b) => b.titulo.localeCompare(a.titulo),
         'status_asc': (a, b) => {
-            const order = { 'todo': 0, 'doing': 1, 'done': 2 };
+            const order = { 'todo': 0, 'doing': 1, 'approval': 2, 'done': 3 };
             return (order[a.status] || 0) - (order[b.status] || 0);
         },
         'status_desc': (a, b) => {
-            const order = { 'todo': 0, 'doing': 1, 'done': 2 };
+            const order = { 'todo': 0, 'doing': 1, 'approval': 2, 'done': 3 };
             return (order[b.status] || 0) - (order[a.status] || 0);
         }
     };
@@ -238,12 +239,12 @@ function render() {
 
     const paginatedTasks = getPaginatedTasks(filtered);
 
-    for (const status of ['todo', 'doing', 'done']) {
+    for (const status of ['todo', 'doing', 'approval', 'done']) {
         const list = document.getElementById(statusMap[status].listId);
         list.innerHTML = '';
     }
 
-    for (const status of ['todo', 'doing', 'done']) {
+    for (const status of ['todo', 'doing', 'approval', 'done']) {
         const list = document.getElementById(statusMap[status].listId);
         const tasksInStatus = paginatedTasks.filter(t => t.status === status);
 
@@ -279,12 +280,14 @@ function getPaginatedTasks(filteredTasks) {
     const tasksByStatus = {
         todo: filteredTasks.filter(t => t.status === 'todo'),
         doing: filteredTasks.filter(t => t.status === 'doing'),
+        approval: filteredTasks.filter(t => t.status === 'approval'),
         done: filteredTasks.filter(t => t.status === 'done')
     };
 
     const maxTasksPerColumn = Math.max(
         tasksByStatus.todo.length,
         tasksByStatus.doing.length,
+        tasksByStatus.approval.length,
         tasksByStatus.done.length
     );
 
@@ -299,7 +302,7 @@ function getPaginatedTasks(filteredTasks) {
 
     const result = [];
 
-    for (const status of ['todo', 'doing', 'done']) {
+    for (const status of ['todo', 'doing', 'approval', 'done']) {
         const tasks = tasksByStatus[status] || [];
         const pageTasks = tasks.slice(startIndex, endIndex);
         result.push(...pageTasks);
@@ -408,17 +411,11 @@ function addPageNumberToContainer(container, page) {
 }
 
 // ============================================================
-//  FUNÇÃO PARA AJUSTAR DATA AO FUSO LOCAL (CORREÇÃO)
+//  FUNÇÃO PARA AJUSTAR DATA
 // ============================================================
 
 function ajustarDataParaLocal(dataStr) {
-    if (!dataStr) return null;
-    const partes = dataStr.split('-');
-    const ano = parseInt(partes[0]);
-    const mes = parseInt(partes[1]) - 1;
-    const dia = parseInt(partes[2]);
-    const data = new Date(ano, mes, dia, 12, 0, 0);
-    return data.toISOString().split('T')[0];
+    return dataStr;
 }
 
 // ============================================================
@@ -434,9 +431,14 @@ function createTaskCard(task) {
     const borderColors = {
         todo: '#2196F3',
         doing: '#F57C00',
+        approval: '#F57C00',
         done: '#00a86b'
     };
     card.style.borderLeftColor = borderColors[task.status] || '#2196F3';
+
+    if (task.status === 'approval') {
+        card.style.background = '#fffde7';
+    }
 
     const isOverdue = task.prazo && task.status !== 'done' && new Date(task.prazo) < new Date();
     if (isOverdue) {
@@ -599,6 +601,36 @@ function createTaskCard(task) {
         moveTask(task.id, -1);
     });
 
+    // Botão Aprovar (só aparece se status for 'approval')
+    if (task.status === 'approval') {
+        const approveBtn = document.createElement('button');
+        approveBtn.innerHTML = '✅';
+        approveBtn.title = 'Aprovar tarefa';
+        approveBtn.className = 'approve-btn';
+        approveBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm('Aprovar esta tarefa?')) {
+                moveTask(task.id, 0, 'done');
+            }
+        });
+        actions.appendChild(approveBtn);
+    }
+
+    // Botão Rejeitar (só aparece se status for 'approval')
+    if (task.status === 'approval') {
+        const rejectBtn = document.createElement('button');
+        rejectBtn.innerHTML = '❌';
+        rejectBtn.title = 'Rejeitar tarefa';
+        rejectBtn.className = 'reject-btn';
+        rejectBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm('Rejeitar esta tarefa? Ela voltará para "Em Andamento".')) {
+                moveTask(task.id, 0, 'doing');
+            }
+        });
+        actions.appendChild(rejectBtn);
+    }
+
     const deleteBtn = document.createElement('button');
     deleteBtn.innerHTML = '🗑️';
     deleteBtn.className = 'delete-btn';
@@ -663,7 +695,7 @@ document.querySelectorAll('.column').forEach(column => {
 });
 
 // ============================================================
-//  FUNÇÕES DE MANIPULAÇÃO
+//  FUNÇÕES DE MANIPULAÇÃO - COM APPROVAL
 // ============================================================
 
 async function moveTask(id, direction, targetStatus = null) {
@@ -672,7 +704,7 @@ async function moveTask(id, direction, targetStatus = null) {
 
     let newStatus = targetStatus;
     if (!newStatus) {
-        const statusOrder = ['todo', 'doing', 'done'];
+        const statusOrder = ['todo', 'doing', 'approval', 'done'];
         const currentIndex = statusOrder.indexOf(task.status);
         const newIndex = currentIndex + direction;
         if (newIndex < 0 || newIndex >= statusOrder.length) return;
@@ -720,11 +752,13 @@ async function verificarEAtualizarStatusTarefa(taskId) {
 
     let novoStatus = null;
 
-    if (todasConcluidas) {
+    if (todasConcluidas && task.status !== 'approval' && task.status !== 'done') {
+        novoStatus = 'approval';
+    } else if (todasConcluidas && task.status === 'approval') {
         novoStatus = 'done';
-    } else if (algumaConcluida && task.status === 'done') {
+    } else if (algumaConcluida && task.status === 'todo') {
         novoStatus = 'doing';
-    } else if (!algumaConcluida && (task.status === 'done' || task.status === 'doing')) {
+    } else if (!algumaConcluida && (task.status === 'doing' || task.status === 'approval')) {
         novoStatus = 'todo';
     }
 
@@ -857,7 +891,7 @@ function getEditSubtasks() {
 }
 
 // ============================================================
-//  CRIAR TAREFA - CORRIGIDO (DATA DE PRAZO)
+//  CRIAR TAREFA
 // ============================================================
 
 async function createTask() {
@@ -872,10 +906,7 @@ async function createTask() {
         .map(opt => parseInt(opt.value))
         .filter(id => !isNaN(id) && id > 0);
 
-    // CORRIGIDO: Ajustar a data para o fuso local
-    const prazoRaw = createPrazo.value;
-    const prazo = prazoRaw ? ajustarDataParaLocal(prazoRaw) : null;
-
+    const prazo = createPrazo.value || null;
     const subtarefas = getSubtasksFromContainer(subtaskList);
 
     try {
@@ -889,7 +920,7 @@ async function createTask() {
 }
 
 // ============================================================
-//  EDIÇÃO DE TAREFAS - CORRIGIDO (DATA DE PRAZO)
+//  EDIÇÃO DE TAREFAS
 // ============================================================
 
 function openEditModal(taskId) {
@@ -935,10 +966,7 @@ async function salvarEdicaoComVerificacao() {
         .map(opt => parseInt(opt.value))
         .filter(id => !isNaN(id) && id > 0);
 
-    // CORRIGIDO: Ajustar a data para o fuso local
-    const prazoRaw = editPrazo.value;
-    const prazo = prazoRaw ? ajustarDataParaLocal(prazoRaw) : null;
-
+    const prazo = editPrazo.value || null;
     const subtarefas = getEditSubtasks();
 
     try {
@@ -1014,7 +1042,7 @@ async function clearAllTasks() {
 // ============================================================
 
 function updateCounters() {
-    for (const status of ['todo', 'doing', 'done']) {
+    for (const status of ['todo', 'doing', 'approval', 'done']) {
         const count = tarefas.filter(t => t.status === status).length;
         const el = document.getElementById(statusMap[status].countId);
         if (el) el.textContent = count;
@@ -1036,18 +1064,27 @@ function updateStats() {
 }
 
 // ============================================================
-//  FORMATAR DATA - CORRIGIDO
+//  FORMATAR DATA
 // ============================================================
 
 function formatarData(dataStr) {
     if (!dataStr) return 'Sem data';
-    const data = new Date(dataStr);
-    const dia = String(data.getDate()).padStart(2, '0');
-    const mes = String(data.getMonth() + 1).padStart(2, '0');
-    const ano = data.getFullYear();
-    const horas = String(data.getHours()).padStart(2, '0');
-    const minutos = String(data.getMinutes()).padStart(2, '0');
-    return `${dia}/${mes}/${ano} ${horas}:${minutos}`;
+
+    if (dataStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const partes = dataStr.split('-');
+        return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    }
+
+    try {
+        const data = new Date(dataStr);
+        if (isNaN(data.getTime())) return dataStr;
+        const dia = String(data.getDate()).padStart(2, '0');
+        const mes = String(data.getMonth() + 1).padStart(2, '0');
+        const ano = data.getFullYear();
+        return `${dia}/${mes}/${ano}`;
+    } catch {
+        return dataStr;
+    }
 }
 
 // ============================================================
