@@ -1496,3 +1496,48 @@ select[multiple] option:hover {
         min-width: 28px;
     }
 }
+
+/* ============================================================
+   CARIMBO DE APROVADO
+   ============================================================ */
+
+.stamp-approved {
+    display: inline-block;
+    background: #4CAF50;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 4px;
+    margin-left: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    animation: stampAppear 0.5s ease;
+}
+
+@keyframes stampAppear {
+    0% {
+        transform: scale(0) rotate(-10deg);
+        opacity: 0;
+    }
+
+    60% {
+        transform: scale(1.2) rotate(2deg);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+/* Tarefa aprovada com fundo diferenciado */
+.task-card.aprovada {
+    border-left-color: #4CAF50 !important;
+    border-left-width: 6px !important;
+    background: #f1f8e9 !important;
+}
+
+.task-card.aprovada .task-title {
+    color: #2e7d32;
+}

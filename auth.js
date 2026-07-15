@@ -1,4 +1,4 @@
-// auth.js - Frontend com suporte a aprovação, MÚLTIPLOS RESPONSÁVEIS e RECUPERAÇÃO DE SENHA
+// auth.js - Frontend com suporte a aprovação, MÚLTIPLOS RESPONSÁVEIS, RECUPERAÇÃO DE SENHA E APROVAÇÃO DE TAREFAS
 
 // ============================================================
 //  CONFIGURAÇÃO DA API
@@ -181,7 +181,7 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 // ============================================================
-//  FUNÇÕES DE TAREFAS (GLOBAIS) - COM MÚLTIPLOS RESPONSÁVEIS
+//  FUNÇÕES DE TAREFAS
 // ============================================================
 
 async function carregarTarefas() {
@@ -268,6 +268,21 @@ async function listarUsuarios() {
 }
 
 // ============================================================
+//  FUNÇÃO DE APROVAÇÃO DE TAREFA (NOVO)
+// ============================================================
+
+async function aprovarTarefa(id) {
+    const response = await apiRequest(`/tarefas/${id}/aprovar`, {
+        method: 'PATCH'
+    });
+    if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.erro || 'Erro ao aprovar tarefa');
+    }
+    return response.json();
+}
+
+// ============================================================
 //  FUNÇÕES DE RECUPERAÇÃO DE SENHA
 // ============================================================
 
@@ -302,7 +317,7 @@ async function resetarSenha(email, codigo, novaSenha) {
 }
 
 // ============================================================
-//  EXPORTAR FUNÇÕES (para uso em outros arquivos)
+//  EXPORTAR FUNÇÕES
 // ============================================================
 
 window.getToken = getToken;
@@ -320,6 +335,8 @@ window.alternarSubtarefa = alternarSubtarefa;
 window.deletarTarefa = deletarTarefa;
 window.listarUsuarios = listarUsuarios;
 
+window.aprovarTarefa = aprovarTarefa;
+
 window.solicitarRecuperacao = solicitarRecuperacao;
 window.resetarSenha = resetarSenha;
 
@@ -327,4 +344,5 @@ console.log('✅ auth.js carregado com sucesso!');
 console.log('📋 Funções disponíveis:');
 console.log('   - Autenticação: login, cadastro, logout');
 console.log('   - Tarefas: criar, editar, deletar, listar');
+console.log('   - Aprovação: aprovarTarefa');
 console.log('   - Recuperação: solicitarRecuperacao, resetarSenha');

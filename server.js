@@ -1,4 +1,4 @@
-// server.js - Versão com MySQL (persistente) - CORRIGIDO: DATA DE PRAZO COMO STRING YYYY-MM-DD
+// server.js - Versão com MySQL (persistente) - COM APROVAÇÃO
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -30,7 +30,7 @@ app.use(express.static(__dirname));
 const codigosRecuperacao = {};
 
 // ============================================================
-//  FUNÇÕES AUXILIARES DO BANCO - CORRIGIDAS
+//  FUNÇÕES AUXILIARES DO BANCO
 // ============================================================
 
 async function testDbConnection() {
@@ -108,13 +108,13 @@ async function deleteUsuario(id) {
 }
 
 // ============================================================
-//  GET TAREFAS - CORRIGIDO: DATA DE PRAZO COMO STRING YYYY-MM-DD
+//  GET TAREFAS - COM COLUNA APROVADO
 // ============================================================
 
 async function getTarefas() {
     try {
         const [rows] = await db.query(`
-            SELECT t.*, 
+            SELECT t.*, t.aprovado,
                    u.nome as criador_nome,
                    GROUP_CONCAT(DISTINCT r.usuario_id) as responsaveis_ids,
                    GROUP_CONCAT(DISTINCT u2.nome) as responsaveis_nomes
@@ -133,7 +133,6 @@ async function getTarefas() {
             tarefa.responsaveis_ids = tarefa.responsaveis_ids ? tarefa.responsaveis_ids.split(',').map(Number) : [];
             tarefa.responsaveis_nomes = tarefa.responsaveis_nomes ? tarefa.responsaveis_nomes.split(',') : [];
 
-            // 🔧 CORREÇÃO: Converter prazo para apenas YYYY-MM-DD
             if (tarefa.prazo) {
                 const data = new Date(tarefa.prazo);
                 if (!isNaN(data.getTime())) {
@@ -152,14 +151,10 @@ async function getTarefas() {
     }
 }
 
-// ============================================================
-//  GET TAREFAS ASSISTENCIA - CORRIGIDO: DATA DE PRAZO COMO STRING YYYY-MM-DD
-// ============================================================
-
 async function getTarefasAssistencia() {
     try {
         const [rows] = await db.query(`
-            SELECT t.*, 
+            SELECT t.*, t.aprovado,
                    u.nome as criador_nome,
                    GROUP_CONCAT(DISTINCT r.usuario_id) as responsaveis_ids,
                    GROUP_CONCAT(DISTINCT u2.nome) as responsaveis_nomes
@@ -178,7 +173,6 @@ async function getTarefasAssistencia() {
             tarefa.responsaveis_ids = tarefa.responsaveis_ids ? tarefa.responsaveis_ids.split(',').map(Number) : [];
             tarefa.responsaveis_nomes = tarefa.responsaveis_nomes ? tarefa.responsaveis_nomes.split(',') : [];
 
-            // 🔧 CORREÇÃO: Converter prazo para apenas YYYY-MM-DD
             if (tarefa.prazo) {
                 const data = new Date(tarefa.prazo);
                 if (!isNaN(data.getTime())) {
@@ -198,12 +192,11 @@ async function getTarefasAssistencia() {
 }
 
 // ============================================================
-//  CREATE TAREFA - CORRIGIDO: DATA DE PRAZO SEM FUSO HORÁRIO
+//  CREATE TAREFA - COM COLUNA APROVADO
 // ============================================================
 
 async function createTarefa(usuario_id, titulo, tag, subtarefas, responsaveis, prazo) {
     try {
-        // Garantir que prazo seja apenas a data (YYYY-MM-DD)
         let prazoFormatado = null;
         if (prazo) {
             if (typeof prazo === 'string' && prazo.includes('T')) {
@@ -214,8 +207,8 @@ async function createTarefa(usuario_id, titulo, tag, subtarefas, responsaveis, p
         }
 
         const [result] = await db.query(
-            'INSERT INTO tarefas (usuario_id, titulo, tag, prazo) VALUES (?, ?, ?, ?)',
-            [usuario_id, titulo, tag || '', prazoFormatado]
+            'INSERT INTO tarefas (usuario_id, titulo, tag, prazo, aprovado) VALUES (?, ?, ?, ?, ?)',
+            [usuario_id, titulo, tag || '', prazoFormatado, 0]
         );
         const tarefaId = result.insertId;
 
@@ -241,7 +234,7 @@ async function createTarefa(usuario_id, titulo, tag, subtarefas, responsaveis, p
 }
 
 // ============================================================
-//  UPDATE TAREFA - CORRIGIDO: DATA DE PRAZO SEM FUSO HORÁRIO
+//  UPDATE TAREFA
 // ============================================================
 
 async function updateTarefa(id, titulo, tag, subtarefas, responsaveis, prazo) {
@@ -348,7 +341,6 @@ function getUsuarioIdFromToken(authHeader) {
     try {
         const token = authHeader.split(' ')[1];
         if (token && token.startsWith('fake-token-')) {
-            // Formato: fake-token-{timestamp}-{userId}
             const parts = token.split('-');
             if (parts.length >= 4) {
                 const id = parseInt(parts[3]);
@@ -402,7 +394,6 @@ app.post('/api/login', async (req, res) => {
 
         console.log(`✅ Login bem-sucedido: ${email}`);
 
-        // Token com formato: fake-token-{timestamp}-{userId}
         const token = `fake-token-${Date.now()}-${usuario.id}`;
 
         res.json({
@@ -595,10 +586,10 @@ app.delete('/api/admin/usuarios/:id', async (req, res) => {
 });
 
 // ============================================================
-//  ROTAS DE TAREFAS
+//  ROTAS DE TAREFAS - COM APROVAÇÃO
 // ============================================================
 
-// Listar tarefas (exclui assistência)
+// Listar tarefas
 app.get('/api/tarefas', async (req, res) => {
     try {
         const tarefas = await getTarefas();
@@ -626,27 +617,22 @@ app.get('/api/tarefas/assistencia', async (req, res) => {
 app.post('/api/tarefas', async (req, res) => {
     try {
         const { titulo, tag, subtarefas, responsaveis, prazo } = req.body;
-        console.log('📝 Recebendo criação de tarefa:', { titulo, tag, subtarefas, responsaveis, prazo });
 
         if (!titulo) {
             return res.status(400).json({ erro: 'Título é obrigatório' });
         }
 
-        // Extrair ID do usuário do token
         const authHeader = req.headers.authorization;
         const usuarioId = getUsuarioIdFromToken(authHeader);
 
         console.log(`📝 Criando tarefa para usuário ${usuarioId}`);
 
         const id = await createTarefa(usuarioId, titulo, tag, subtarefas, responsaveis, prazo);
-        console.log(`✅ Tarefa criada: ${titulo} (ID: ${id}) pelo usuário ${usuarioId}`);
+        console.log(`✅ Tarefa criada: ${titulo} (ID: ${id})`);
         res.json({ id, mensagem: 'Tarefa criada com sucesso!' });
     } catch (error) {
         console.error('❌ Erro ao criar tarefa:', error);
-        res.status(500).json({
-            erro: 'Erro ao criar tarefa: ' + error.message,
-            stack: error.stack
-        });
+        res.status(500).json({ erro: 'Erro ao criar tarefa: ' + error.message });
     }
 });
 
@@ -654,7 +640,6 @@ app.post('/api/tarefas', async (req, res) => {
 app.post('/api/tarefas/assistencia', async (req, res) => {
     try {
         const { titulo, tag, subtarefas, responsaveis, prazo } = req.body;
-        console.log('📝 Recebendo criação de tarefa de assistência:', { titulo, subtarefas, responsaveis, prazo });
 
         if (!titulo) {
             return res.status(400).json({ erro: 'Título é obrigatório' });
@@ -666,14 +651,11 @@ app.post('/api/tarefas/assistencia', async (req, res) => {
         console.log(`📝 Criando tarefa de assistência para usuário ${usuarioId}`);
 
         const id = await createTarefa(usuarioId, titulo, 'assistencia', subtarefas, responsaveis, prazo);
-        console.log(`✅ Tarefa de assistência criada: ${titulo} (ID: ${id}) pelo usuário ${usuarioId}`);
+        console.log(`✅ Tarefa de assistência criada: ${titulo} (ID: ${id})`);
         res.json({ id, mensagem: 'Tarefa criada com sucesso!' });
     } catch (error) {
         console.error('❌ Erro ao criar tarefa de assistência:', error);
-        res.status(500).json({
-            erro: 'Erro ao criar tarefa: ' + error.message,
-            stack: error.stack
-        });
+        res.status(500).json({ erro: 'Erro ao criar tarefa: ' + error.message });
     }
 });
 
@@ -706,7 +688,25 @@ app.patch('/api/tarefas/:id/status', async (req, res) => {
     }
 });
 
-// Alternar subtarefa
+// ============================================================
+//  ROTA DE APROVAÇÃO DE TAREFA (NOVO)
+// ============================================================
+
+app.patch('/api/tarefas/:id/aprovar', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        await db.query('UPDATE tarefas SET aprovado = 1 WHERE id = ?', [id]);
+        res.json({ mensagem: 'Tarefa aprovada com sucesso!', aprovado: true });
+    } catch (error) {
+        console.error('❌ Erro ao aprovar tarefa:', error);
+        res.status(500).json({ erro: 'Erro ao aprovar tarefa' });
+    }
+});
+
+// ============================================================
+//  SUBTAREFAS
+// ============================================================
+
 app.patch('/api/subtarefas/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
@@ -813,16 +813,15 @@ app.use((req, res) => {
 });
 
 // ============================================================
-//  INICIAR SERVIDOR - COM TESTE DE CONEXÃO
+//  INICIAR SERVIDOR
 // ============================================================
 
-// Testar conexão com o banco antes de iniciar
 (async function init() {
     try {
         console.log('🔄 Testando conexão com o MySQL...');
         const connected = await testDbConnection();
         if (!connected) {
-            console.error('❌ Não foi possível conectar ao MySQL. Verifique as variáveis de ambiente.');
+            console.error('❌ Não foi possível conectar ao MySQL.');
             process.exit(1);
         }
     } catch (error) {

@@ -1,4 +1,4 @@
-// database.js - Configuração MySQL com nova tabela tarefa_responsaveis
+// database.js - Configuração MySQL com nova tabela tarefa_responsaveis e coluna aprovado
 const mysql = require('mysql2');
 require('dotenv').config();
 
@@ -51,7 +51,7 @@ async function inicializarBanco() {
         `);
         console.log('✅ Tabela usuarios criada/verificada');
 
-        // 2. Tabela de tarefas - COM STATUS APPROVAL
+        // 2. Tabela de tarefas - COM COLUNA APROVADO
         await db.query(`
             CREATE TABLE IF NOT EXISTS tarefas (
                 id INT PRIMARY KEY AUTO_INCREMENT,
@@ -60,6 +60,7 @@ async function inicializarBanco() {
                 status ENUM('todo', 'doing', 'approval', 'done') DEFAULT 'todo',
                 tag VARCHAR(50),
                 prazo DATE NULL,
+                aprovado TINYINT DEFAULT 0,
                 data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
             )

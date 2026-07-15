@@ -1,6 +1,6 @@
 /* ============================================================
    script.js - Lógica completa do Dashboard 
-   (COM DISTRIBUIÇÃO DE TAREFAS FILTRADAS E OCULTAÇÃO DE TÍTULOS)
+   (COM SELO DE APROVADO)
    ============================================================ */
 
 // --- Estado ---
@@ -495,12 +495,15 @@ function ajustarDataParaLocal(dataStr) {
 }
 
 // ============================================================
-//  CRIAÇÃO DO CARD
+//  CRIAÇÃO DO CARD - COM SELO DE APROVADO
 // ============================================================
 
 function createTaskCard(task) {
     const card = document.createElement('div');
     card.className = 'task-card';
+    if (task.aprovado === 1) {
+        card.classList.add('aprovada');
+    }
     card.draggable = true;
     card.dataset.id = task.id;
 
@@ -525,6 +528,15 @@ function createTaskCard(task) {
     const title = document.createElement('div');
     title.className = 'task-title';
     title.textContent = task.titulo;
+
+    // Carimbo de APROVADO (se estiver aprovado)
+    if (task.aprovado === 1) {
+        const stamp = document.createElement('span');
+        stamp.className = 'stamp-approved';
+        stamp.textContent = '✅ APROVADO';
+        title.appendChild(stamp);
+    }
+
     if (isOverdue) {
         title.innerHTML += ' <span style="color:#ff4d4f;font-size:12px;">🔴 ATRASADA</span>';
     }
@@ -654,14 +666,6 @@ function createTaskCard(task) {
         openEditModal(task.id);
     });
 
-    const forwardBtn = document.createElement('button');
-    forwardBtn.innerHTML = '➡️';
-    forwardBtn.title = 'Avançar status';
-    forwardBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        moveTask(task.id, 1);
-    });
-
     const backBtn = document.createElement('button');
     backBtn.innerHTML = '⬅️';
     backBtn.title = 'Voltar status';
@@ -670,32 +674,39 @@ function createTaskCard(task) {
         moveTask(task.id, -1);
     });
 
-    if (task.status === 'approval') {
+    // Botão Avançar - com validação de aprovação
+    const forwardBtn = document.createElement('button');
+    forwardBtn.innerHTML = '➡️';
+    forwardBtn.title = 'Avançar status';
+    forwardBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Se estiver em approval e não aprovado, bloqueia
+        if (task.status === 'approval' && task.aprovado === 0) {
+            alert('⚠️ Esta tarefa precisa ser aprovada antes de avançar para Concluído!');
+            return;
+        }
+        moveTask(task.id, 1);
+    });
+
+    // Botão Aprovar (só aparece se status for 'approval' e NÃO estiver aprovado)
+    if (task.status === 'approval' && task.aprovado === 0) {
         const approveBtn = document.createElement('button');
         approveBtn.innerHTML = '✅';
         approveBtn.title = 'Aprovar tarefa';
         approveBtn.className = 'approve-btn';
-        approveBtn.addEventListener('click', (e) => {
+        approveBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
             if (confirm('Aprovar esta tarefa?')) {
-                moveTask(task.id, 0, 'done');
+                try {
+                    await aprovarTarefa(task.id);
+                    task.aprovado = 1;
+                    render();
+                } catch (error) {
+                    alert(error.message);
+                }
             }
         });
         actions.appendChild(approveBtn);
-    }
-
-    if (task.status === 'approval') {
-        const rejectBtn = document.createElement('button');
-        rejectBtn.innerHTML = '❌';
-        rejectBtn.title = 'Rejeitar tarefa';
-        rejectBtn.className = 'reject-btn';
-        rejectBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (confirm('Rejeitar esta tarefa? Ela voltará para "Em Andamento".')) {
-                moveTask(task.id, 0, 'doing');
-            }
-        });
-        actions.appendChild(rejectBtn);
     }
 
     const deleteBtn = document.createElement('button');
@@ -768,6 +779,12 @@ document.querySelectorAll('.column').forEach(column => {
 async function moveTask(id, direction, targetStatus = null) {
     const task = tarefas.find(t => t.id === id);
     if (!task) return;
+
+    // Verificar se é approval e está tentando avançar sem aprovação
+    if (task.status === 'approval' && direction > 0 && task.aprovado === 0) {
+        alert('⚠️ Esta tarefa precisa ser aprovada antes de avançar para Concluído!');
+        return;
+    }
 
     let newStatus = targetStatus;
     if (!newStatus) {
