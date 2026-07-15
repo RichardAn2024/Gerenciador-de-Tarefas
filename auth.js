@@ -268,14 +268,9 @@ async function listarUsuarios() {
 }
 
 // ============================================================
-//  FUNÇÕES DE RECUPERAÇÃO DE SENHA (NOVO)
+//  FUNÇÕES DE RECUPERAÇÃO DE SENHA
 // ============================================================
 
-/**
- * Solicita um código de recuperação para o email informado
- * @param {string} email - Email do usuário
- * @returns {Promise<Object>} - Resposta do servidor
- */
 async function solicitarRecuperacao(email) {
     const response = await fetch(`${API_URL}/recuperar`, {
         method: 'POST',
@@ -291,13 +286,6 @@ async function solicitarRecuperacao(email) {
     return response.json();
 }
 
-/**
- * Redefine a senha usando o código de verificação
- * @param {string} email - Email do usuário
- * @param {string} codigo - Código de verificação de 6 dígitos
- * @param {string} novaSenha - Nova senha (mínimo 6 caracteres)
- * @returns {Promise<Object>} - Resposta do servidor
- */
 async function resetarSenha(email, codigo, novaSenha) {
     const response = await fetch(`${API_URL}/resetar-senha`, {
         method: 'POST',
@@ -317,14 +305,12 @@ async function resetarSenha(email, codigo, novaSenha) {
 //  EXPORTAR FUNÇÕES (para uso em outros arquivos)
 // ============================================================
 
-// Funções de autenticação
 window.getToken = getToken;
 window.getUsuario = getUsuario;
 window.logout = logout;
 window.verificarAutenticacao = verificarAutenticacao;
 window.apiRequest = apiRequest;
 
-// Funções de tarefas
 window.carregarTarefas = carregarTarefas;
 window.carregarTarefasAssistencia = carregarTarefasAssistencia;
 window.criarTarefa = criarTarefa;
@@ -334,7 +320,6 @@ window.alternarSubtarefa = alternarSubtarefa;
 window.deletarTarefa = deletarTarefa;
 window.listarUsuarios = listarUsuarios;
 
-// Funções de recuperação de senha (NOVO)
 window.solicitarRecuperacao = solicitarRecuperacao;
 window.resetarSenha = resetarSenha;
 

@@ -1,4 +1,4 @@
-// server.js - Versão com MySQL (persistente) - CORRIGIDO COM USUÁRIO LOGADO
+// server.js - Versão com MySQL (persistente) - CORRIGIDO: extrai ID do usuário do token
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -282,35 +282,28 @@ async function getEstatisticas() {
 }
 
 // ============================================================
-//  FUNÇÃO PARA PEGAR USUÁRIO DO TOKEN (MIDDLEWARE)
+//  FUNÇÃO PARA EXTRAIR ID DO USUÁRIO DO TOKEN
 // ============================================================
 
-function autenticar(req, res, next) {
-    // Como estamos usando token fake, pegamos o usuário do localStorage via header
-    // Em produção, isso seria feito com JWT
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-        // Se não tiver token, assume usuário 1 (admin) - APENAS PARA COMPATIBILIDADE
-        req.usuarioId = 1;
-        return next();
-    }
+function getUsuarioIdFromToken(authHeader) {
+    if (!authHeader) return 1;
 
     try {
-        // Token fake - extrair usuário do token
-        // Formato: "Bearer fake-token-123456"
         const token = authHeader.split(' ')[1];
         if (token && token.startsWith('fake-token-')) {
-            // Tentar pegar o usuário do localStorage não é possível no backend
-            // Usamos o ID do admin por padrão se não conseguir identificar
-            req.usuarioId = 1;
-        } else {
-            req.usuarioId = 1;
+            // Formato: fake-token-{timestamp}-{userId}
+            const parts = token.split('-');
+            if (parts.length >= 4) {
+                const id = parseInt(parts[3]);
+                if (!isNaN(id) && id > 0 && id < 1000000) {
+                    return id;
+                }
+            }
         }
-        next();
+        return 1;
     } catch (error) {
-        console.error('❌ Erro na autenticação:', error);
-        req.usuarioId = 1;
-        next();
+        console.warn('⚠️ Erro ao extrair usuário do token:', error.message);
+        return 1;
     }
 }
 
@@ -351,9 +344,13 @@ app.post('/api/login', async (req, res) => {
         }
 
         console.log(`✅ Login bem-sucedido: ${email}`);
+
+        // Token com formato: fake-token-{timestamp}-{userId}
+        const token = `fake-token-${Date.now()}-${usuario.id}`;
+
         res.json({
             mensagem: 'Login bem-sucedido!',
-            token: 'fake-token-' + Date.now() + '-' + usuario.id,
+            token: token,
             usuario: {
                 id: usuario.id,
                 nome: usuario.nome,
@@ -541,7 +538,7 @@ app.delete('/api/admin/usuarios/:id', async (req, res) => {
 });
 
 // ============================================================
-//  ROTAS DE TAREFAS - CORRIGIDAS COM USUÁRIO LOGADO
+//  ROTAS DE TAREFAS - CORRIGIDAS (extrai ID do usuário do token)
 // ============================================================
 
 // Listar tarefas (exclui assistência)
@@ -568,79 +565,58 @@ app.get('/api/tarefas/assistencia', async (req, res) => {
     }
 });
 
-// Criar tarefa - CORRIGIDO: usa o ID do usuário logado
+// Criar tarefa - CORRIGIDO: extrai ID do usuário do token
 app.post('/api/tarefas', async (req, res) => {
     try {
         const { titulo, tag, subtarefas, responsaveis, prazo } = req.body;
+        console.log('📝 Recebendo criação de tarefa:', { titulo, tag, subtarefas, responsaveis, prazo });
 
         if (!titulo) {
             return res.status(400).json({ erro: 'Título é obrigatório' });
         }
 
-        // Pegar o ID do usuário logado (do token)
-        // Como estamos usando token fake, extraímos do header
-        let usuarioId = 1; // fallback
+        // Extrair ID do usuário do token
         const authHeader = req.headers.authorization;
-        if (authHeader) {
-            try {
-                const token = authHeader.split(' ')[1];
-                if (token && token.startsWith('fake-token-')) {
-                    const parts = token.split('-');
-                    if (parts.length >= 3) {
-                        const id = parseInt(parts[2]);
-                        if (!isNaN(id)) usuarioId = id;
-                    }
-                }
-            } catch (e) {
-                console.warn('⚠️ Não foi possível extrair usuário do token, usando admin');
-            }
-        }
+        const usuarioId = getUsuarioIdFromToken(authHeader);
 
         console.log(`📝 Criando tarefa para usuário ${usuarioId}`);
 
         const id = await createTarefa(usuarioId, titulo, tag, subtarefas, responsaveis, prazo);
-        console.log(`✅ Tarefa criada: ${titulo} pelo usuário ${usuarioId}`);
+        console.log(`✅ Tarefa criada: ${titulo} (ID: ${id}) pelo usuário ${usuarioId}`);
         res.json({ id, mensagem: 'Tarefa criada com sucesso!' });
     } catch (error) {
         console.error('❌ Erro ao criar tarefa:', error);
-        res.status(500).json({ erro: 'Erro ao criar tarefa' });
+        res.status(500).json({
+            erro: 'Erro ao criar tarefa: ' + error.message,
+            stack: error.stack
+        });
     }
 });
 
-// Criar tarefa de assistência - CORRIGIDO: usa o ID do usuário logado
+// Criar tarefa de assistência - CORRIGIDO: extrai ID do usuário do token
 app.post('/api/tarefas/assistencia', async (req, res) => {
     try {
         const { titulo, tag, subtarefas, responsaveis, prazo } = req.body;
+        console.log('📝 Recebendo criação de tarefa de assistência:', { titulo, subtarefas, responsaveis, prazo });
 
         if (!titulo) {
             return res.status(400).json({ erro: 'Título é obrigatório' });
         }
 
-        let usuarioId = 1;
         const authHeader = req.headers.authorization;
-        if (authHeader) {
-            try {
-                const token = authHeader.split(' ')[1];
-                if (token && token.startsWith('fake-token-')) {
-                    const parts = token.split('-');
-                    if (parts.length >= 3) {
-                        const id = parseInt(parts[2]);
-                        if (!isNaN(id)) usuarioId = id;
-                    }
-                }
-            } catch (e) {
-                console.warn('⚠️ Não foi possível extrair usuário do token, usando admin');
-            }
-        }
+        const usuarioId = getUsuarioIdFromToken(authHeader);
 
         console.log(`📝 Criando tarefa de assistência para usuário ${usuarioId}`);
 
         const id = await createTarefa(usuarioId, titulo, 'assistencia', subtarefas, responsaveis, prazo);
-        console.log(`✅ Tarefa de assistência criada: ${titulo} pelo usuário ${usuarioId}`);
+        console.log(`✅ Tarefa de assistência criada: ${titulo} (ID: ${id}) pelo usuário ${usuarioId}`);
         res.json({ id, mensagem: 'Tarefa criada com sucesso!' });
     } catch (error) {
-        console.error('❌ Erro ao criar tarefa:', error);
-        res.status(500).json({ erro: 'Erro ao criar tarefa' });
+        console.error('❌ Erro ao criar tarefa de assistência:', error);
+        res.status(500).json({
+            erro: 'Erro ao criar tarefa: ' + error.message,
+            stack: error.stack
+        });
     }
 });
 
