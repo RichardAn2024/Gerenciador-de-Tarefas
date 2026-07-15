@@ -1,4 +1,4 @@
-// server.js - Versão com MySQL (persistente) - CORRIGIDO: extrai ID do usuário do token e DATA DE PRAZO
+// server.js - Versão com MySQL (persistente) - CORRIGIDO: DATA DE PRAZO COMO STRING YYYY-MM-DD
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -107,6 +107,10 @@ async function deleteUsuario(id) {
     }
 }
 
+// ============================================================
+//  GET TAREFAS - CORRIGIDO: DATA DE PRAZO COMO STRING YYYY-MM-DD
+// ============================================================
+
 async function getTarefas() {
     try {
         const [rows] = await db.query(`
@@ -128,6 +132,17 @@ async function getTarefas() {
             tarefa.subtarefas = subtasks || [];
             tarefa.responsaveis_ids = tarefa.responsaveis_ids ? tarefa.responsaveis_ids.split(',').map(Number) : [];
             tarefa.responsaveis_nomes = tarefa.responsaveis_nomes ? tarefa.responsaveis_nomes.split(',') : [];
+
+            // 🔧 CORREÇÃO: Converter prazo para apenas YYYY-MM-DD
+            if (tarefa.prazo) {
+                const data = new Date(tarefa.prazo);
+                if (!isNaN(data.getTime())) {
+                    const ano = data.getFullYear();
+                    const mes = String(data.getMonth() + 1).padStart(2, '0');
+                    const dia = String(data.getDate()).padStart(2, '0');
+                    tarefa.prazo = `${ano}-${mes}-${dia}`;
+                }
+            }
         }
 
         return rows || [];
@@ -136,6 +151,10 @@ async function getTarefas() {
         return [];
     }
 }
+
+// ============================================================
+//  GET TAREFAS ASSISTENCIA - CORRIGIDO: DATA DE PRAZO COMO STRING YYYY-MM-DD
+// ============================================================
 
 async function getTarefasAssistencia() {
     try {
@@ -158,6 +177,17 @@ async function getTarefasAssistencia() {
             tarefa.subtarefas = subtasks || [];
             tarefa.responsaveis_ids = tarefa.responsaveis_ids ? tarefa.responsaveis_ids.split(',').map(Number) : [];
             tarefa.responsaveis_nomes = tarefa.responsaveis_nomes ? tarefa.responsaveis_nomes.split(',') : [];
+
+            // 🔧 CORREÇÃO: Converter prazo para apenas YYYY-MM-DD
+            if (tarefa.prazo) {
+                const data = new Date(tarefa.prazo);
+                if (!isNaN(data.getTime())) {
+                    const ano = data.getFullYear();
+                    const mes = String(data.getMonth() + 1).padStart(2, '0');
+                    const dia = String(data.getDate()).padStart(2, '0');
+                    tarefa.prazo = `${ano}-${mes}-${dia}`;
+                }
+            }
         }
 
         return rows || [];
@@ -565,7 +595,7 @@ app.delete('/api/admin/usuarios/:id', async (req, res) => {
 });
 
 // ============================================================
-//  ROTAS DE TAREFAS - CORRIGIDAS (extrai ID do usuário do token)
+//  ROTAS DE TAREFAS
 // ============================================================
 
 // Listar tarefas (exclui assistência)
@@ -592,7 +622,7 @@ app.get('/api/tarefas/assistencia', async (req, res) => {
     }
 });
 
-// Criar tarefa - CORRIGIDO: extrai ID do usuário do token
+// Criar tarefa
 app.post('/api/tarefas', async (req, res) => {
     try {
         const { titulo, tag, subtarefas, responsaveis, prazo } = req.body;
@@ -620,7 +650,7 @@ app.post('/api/tarefas', async (req, res) => {
     }
 });
 
-// Criar tarefa de assistência - CORRIGIDO: extrai ID do usuário do token
+// Criar tarefa de assistência
 app.post('/api/tarefas/assistencia', async (req, res) => {
     try {
         const { titulo, tag, subtarefas, responsaveis, prazo } = req.body;
