@@ -1,4 +1,4 @@
-// auth.js - Frontend com suporte a aprovação, MÚLTIPLOS RESPONSÁVEIS, RECUPERAÇÃO DE SENHA E APROVAÇÃO DE TAREFAS
+// auth.js - Frontend com suporte a aprovação, MÚLTIPLOS RESPONSÁVEIS, RECUPERAÇÃO DE SENHA, APROVAÇÃO E DESAPROVAÇÃO DE TAREFAS
 
 // ============================================================
 //  CONFIGURAÇÃO DA API
@@ -268,7 +268,7 @@ async function listarUsuarios() {
 }
 
 // ============================================================
-//  FUNÇÃO DE APROVAÇÃO DE TAREFA (NOVO)
+//  FUNÇÕES DE APROVAÇÃO E DESAPROVAÇÃO DE TAREFA
 // ============================================================
 
 async function aprovarTarefa(id) {
@@ -278,6 +278,17 @@ async function aprovarTarefa(id) {
     if (!response.ok) {
         const data = await response.json();
         throw new Error(data.erro || 'Erro ao aprovar tarefa');
+    }
+    return response.json();
+}
+
+async function desaprovarTarefa(id) {
+    const response = await apiRequest(`/tarefas/${id}/desaprovar`, {
+        method: 'PATCH'
+    });
+    if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.erro || 'Erro ao remover aprovação');
     }
     return response.json();
 }
@@ -336,6 +347,7 @@ window.deletarTarefa = deletarTarefa;
 window.listarUsuarios = listarUsuarios;
 
 window.aprovarTarefa = aprovarTarefa;
+window.desaprovarTarefa = desaprovarTarefa;
 
 window.solicitarRecuperacao = solicitarRecuperacao;
 window.resetarSenha = resetarSenha;
@@ -344,5 +356,5 @@ console.log('✅ auth.js carregado com sucesso!');
 console.log('📋 Funções disponíveis:');
 console.log('   - Autenticação: login, cadastro, logout');
 console.log('   - Tarefas: criar, editar, deletar, listar');
-console.log('   - Aprovação: aprovarTarefa');
+console.log('   - Aprovação: aprovarTarefa, desaprovarTarefa');
 console.log('   - Recuperação: solicitarRecuperacao, resetarSenha');

@@ -1,6 +1,6 @@
 /* ============================================================
    script.js - Lógica completa do Dashboard 
-   (COM SELO DE APROVADO)
+   (COM SELO DE APROVADO E REMOÇÃO AO VOLTAR)
    ============================================================ */
 
 // --- Estado ---
@@ -773,7 +773,7 @@ document.querySelectorAll('.column').forEach(column => {
 });
 
 // ============================================================
-//  FUNÇÕES DE MANIPULAÇÃO
+//  FUNÇÕES DE MANIPULAÇÃO - COM REMOÇÃO DO SELO AO VOLTAR
 // ============================================================
 
 async function moveTask(id, direction, targetStatus = null) {
@@ -796,6 +796,12 @@ async function moveTask(id, direction, targetStatus = null) {
     }
 
     try {
+        // Se estiver voltando de approval para doing, remove o selo de aprovado
+        if (task.status === 'approval' && newStatus === 'doing' && task.aprovado === 1) {
+            await desaprovarTarefa(id);
+            task.aprovado = 0;
+        }
+
         await atualizarStatusTarefa(id, newStatus);
         task.status = newStatus;
         render();

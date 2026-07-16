@@ -1,4 +1,4 @@
-// server.js - Versão com MySQL (persistente) - COM APROVAÇÃO
+// server.js - Versão com MySQL (persistente) - COM APROVAÇÃO E DESAPROVAÇÃO
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -586,7 +586,7 @@ app.delete('/api/admin/usuarios/:id', async (req, res) => {
 });
 
 // ============================================================
-//  ROTAS DE TAREFAS - COM APROVAÇÃO
+//  ROTAS DE TAREFAS - COM APROVAÇÃO E DESAPROVAÇÃO
 // ============================================================
 
 // Listar tarefas
@@ -689,7 +689,7 @@ app.patch('/api/tarefas/:id/status', async (req, res) => {
 });
 
 // ============================================================
-//  ROTA DE APROVAÇÃO DE TAREFA (NOVO)
+//  ROTA DE APROVAÇÃO DE TAREFA
 // ============================================================
 
 app.patch('/api/tarefas/:id/aprovar', async (req, res) => {
@@ -700,6 +700,21 @@ app.patch('/api/tarefas/:id/aprovar', async (req, res) => {
     } catch (error) {
         console.error('❌ Erro ao aprovar tarefa:', error);
         res.status(500).json({ erro: 'Erro ao aprovar tarefa' });
+    }
+});
+
+// ============================================================
+//  ROTA DE DESAPROVAÇÃO DE TAREFA (NOVO)
+// ============================================================
+
+app.patch('/api/tarefas/:id/desaprovar', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        await db.query('UPDATE tarefas SET aprovado = 0 WHERE id = ?', [id]);
+        res.json({ mensagem: 'Aprovação removida com sucesso!', aprovado: false });
+    } catch (error) {
+        console.error('❌ Erro ao desaprovar tarefa:', error);
+        res.status(500).json({ erro: 'Erro ao desaprovar tarefa' });
     }
 });
 
