@@ -1170,15 +1170,21 @@ body {
     display: flex;
     align-items: center;
     gap: 6px;
-    flex: 1;
-    max-width: 350px;
+    flex: 2;
+    /* Aumentei de 1 para 2 (ocupa mais espaço) */
+    max-width: 500px;
+    /* Aumentei de 350px para 500px */
+    min-width: 250px;
+    /* Garante um tamanho mínimo */
 }
 
 .search-input {
-    padding: 8px 14px;
+    padding: 10px 16px;
+    /* Aumentei o padding para ficar mais alto */
     border: 1.5px solid #e1e4e8;
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 15px;
+    /* Aumentei de 14px para 15px */
     width: 100%;
     transition: 0.3s ease;
     background: white;
@@ -1195,8 +1201,9 @@ body {
 }
 
 #clearSearchBtn {
-    padding: 6px 12px;
-    font-size: 13px;
+    padding: 8px 14px;
+    /* Ajustei o botão para acompanhar a altura */
+    font-size: 14px;
     white-space: nowrap;
 }
 
