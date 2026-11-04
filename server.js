@@ -276,7 +276,19 @@ async function updateTarefa(id, titulo, tag, subtarefas, responsaveis, prazo) {
 
 async function updateTarefaStatus(id, status) {
     try {
-        await db.query('UPDATE tarefas SET status = ? WHERE id = ?', [status, id]);
+        if (status === 'done') {
+            // Se está indo para concluído, registra a data de finalização (apenas data)
+            await db.query(
+                'UPDATE tarefas SET status = ?, data_finalizacao = CURDATE() WHERE id = ?',
+                [status, id]
+            );
+        } else {
+            // Se está voltando de concluído, remove a data de finalização
+            await db.query(
+                'UPDATE tarefas SET status = ?, data_finalizacao = NULL WHERE id = ?',
+                [status, id]
+            );
+        }
     } catch (error) {
         console.error('❌ Erro em updateTarefaStatus:', error.message);
         throw error;

@@ -1541,3 +1541,34 @@ select[multiple] option:hover {
 .task-card.aprovada .task-title {
     color: #2e7d32;
 }
+
+.task-status-badge.todo {
+    background: #e3f2fd;
+    color: #1565C0;
+}
+
+.task-status-badge.doing {
+    background: #fff8e1;
+    color: #F57C00;
+}
+
+/* ============================================================
+   DATA DE FINALIZAÇÃO
+   ============================================================ */
+
+.task-finalizado {
+    font-size: 11px;
+    margin-top: 4px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: #e8f5e9;
+    color: #2e7d32;
+    font-weight: 600;
+    display: inline-block;
+    border: 1px solid #a5d6a7;
+}
+
+/* Tarefa concluída com fundo verde claro */
+.column[data-status="done"] .task-card {
+    background: #f1f8e9;
+}
