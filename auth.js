@@ -1,8 +1,4 @@
-// auth.js - Frontend com suporte a aprovação, MÚLTIPLOS RESPONSÁVEIS, RECUPERAÇÃO DE SENHA, APROVAÇÃO E DESAPROVAÇÃO DE TAREFAS
-
-// ============================================================
-//  CONFIGURAÇÃO DA API
-// ============================================================
+// auth.js - Frontend com suporte a observação, aprovação e recuperação de senha
 
 const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:8080/api'
@@ -26,9 +22,7 @@ function mostrarErro(mensagem) {
 
 function ocultarErro() {
     const erroEl = document.getElementById('mensagemErro');
-    if (erroEl) {
-        erroEl.style.display = 'none';
-    }
+    if (erroEl) erroEl.style.display = 'none';
 }
 
 // ============================================================
@@ -47,15 +41,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const senha = document.getElementById('cadastroSenha').value;
             const confirmarSenha = document.getElementById('cadastroConfirmarSenha').value;
 
-            if (senha !== confirmarSenha) {
-                mostrarErro('As senhas não coincidem.');
-                return;
-            }
-
-            if (senha.length < 6) {
-                mostrarErro('A senha deve ter pelo menos 6 caracteres.');
-                return;
-            }
+            if (senha !== confirmarSenha) return mostrarErro('As senhas não coincidem.');
+            if (senha.length < 6) return mostrarErro('A senha deve ter pelo menos 6 caracteres.');
 
             try {
                 const response = await fetch(`${API_URL}/cadastro`, {
@@ -125,16 +112,13 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============================================================
-//  FUNÇÕES DE AUTENTICAÇÃO (GLOBAIS)
+//  FUNÇÕES GLOBAIS
 // ============================================================
 
-function getToken() {
-    return localStorage.getItem('token');
-}
-
+function getToken() { return localStorage.getItem('token'); }
 function getUsuario() {
-    const usuario = localStorage.getItem('usuario');
-    return usuario ? JSON.parse(usuario) : null;
+    const u = localStorage.getItem('usuario');
+    return u ? JSON.parse(u) : null;
 }
 
 function logout() {
@@ -152,10 +136,6 @@ function verificarAutenticacao() {
     return token;
 }
 
-// ============================================================
-//  FUNÇÕES DA API (GLOBAIS)
-// ============================================================
-
 async function apiRequest(endpoint, options = {}) {
     const token = getToken();
     const headers = {
@@ -163,9 +143,7 @@ async function apiRequest(endpoint, options = {}) {
         ...options.headers
     };
 
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
+    if (token) headers['Authorization'] = `Bearer ${token}`;
 
     const response = await fetch(`${API_URL}${endpoint}`, {
         ...options,
@@ -181,29 +159,25 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 // ============================================================
-//  FUNÇÕES DE TAREFAS
+//  FUNÇÕES DE TAREFAS (COM OBSERVAÇÃO)
 // ============================================================
 
 async function carregarTarefas() {
     const response = await apiRequest('/tarefas');
-    if (!response.ok) {
-        throw new Error('Erro ao carregar tarefas');
-    }
+    if (!response.ok) throw new Error('Erro ao carregar tarefas');
     return response.json();
 }
 
 async function carregarTarefasAssistencia() {
     const response = await apiRequest('/tarefas/assistencia');
-    if (!response.ok) {
-        throw new Error('Erro ao carregar tarefas de assistência');
-    }
+    if (!response.ok) throw new Error('Erro ao carregar tarefas de assistência');
     return response.json();
 }
 
-async function criarTarefa(titulo, tag, subtarefas, responsaveis = [], prazo = null) {
+async function criarTarefa(titulo, tag, subtarefas, responsaveis = [], prazo = null, observacao = null) {
     const response = await apiRequest('/tarefas', {
         method: 'POST',
-        body: JSON.stringify({ titulo, tag, subtarefas, responsaveis, prazo })
+        body: JSON.stringify({ titulo, tag, subtarefas, responsaveis, prazo, observacao })
     });
     if (!response.ok) {
         const data = await response.json();
@@ -212,10 +186,10 @@ async function criarTarefa(titulo, tag, subtarefas, responsaveis = [], prazo = n
     return response.json();
 }
 
-async function atualizarTarefa(id, titulo, tag, subtarefas, responsaveis = [], prazo = null) {
+async function atualizarTarefa(id, titulo, tag, subtarefas, responsaveis = [], prazo = null, observacao = null) {
     const response = await apiRequest(`/tarefas/${id}`, {
         method: 'PUT',
-        body: JSON.stringify({ titulo, tag, subtarefas, responsaveis, prazo })
+        body: JSON.stringify({ titulo, tag, subtarefas, responsaveis, prazo, observacao })
     });
     if (!response.ok) {
         const data = await response.json();
@@ -249,9 +223,7 @@ async function alternarSubtarefa(id, concluida) {
 }
 
 async function deletarTarefa(id) {
-    const response = await apiRequest(`/tarefas/${id}`, {
-        method: 'DELETE'
-    });
+    const response = await apiRequest(`/tarefas/${id}`, { method: 'DELETE' });
     if (!response.ok) {
         const data = await response.json();
         throw new Error(data.erro || 'Erro ao deletar tarefa');
@@ -261,20 +233,12 @@ async function deletarTarefa(id) {
 
 async function listarUsuarios() {
     const response = await apiRequest('/usuarios');
-    if (!response.ok) {
-        throw new Error('Erro ao carregar usuários');
-    }
+    if (!response.ok) throw new Error('Erro ao carregar usuários');
     return response.json();
 }
 
-// ============================================================
-//  FUNÇÕES DE APROVAÇÃO E DESAPROVAÇÃO DE TAREFA
-// ============================================================
-
 async function aprovarTarefa(id) {
-    const response = await apiRequest(`/tarefas/${id}/aprovar`, {
-        method: 'PATCH'
-    });
+    const response = await apiRequest(`/tarefas/${id}/aprovar`, { method: 'PATCH' });
     if (!response.ok) {
         const data = await response.json();
         throw new Error(data.erro || 'Erro ao aprovar tarefa');
@@ -283,9 +247,7 @@ async function aprovarTarefa(id) {
 }
 
 async function desaprovarTarefa(id) {
-    const response = await apiRequest(`/tarefas/${id}/desaprovar`, {
-        method: 'PATCH'
-    });
+    const response = await apiRequest(`/tarefas/${id}/desaprovar`, { method: 'PATCH' });
     if (!response.ok) {
         const data = await response.json();
         throw new Error(data.erro || 'Erro ao remover aprovação');
@@ -303,12 +265,10 @@ async function solicitarRecuperacao(email) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
     });
-
     if (!response.ok) {
         const data = await response.json();
         throw new Error(data.erro || 'Erro ao solicitar recuperação');
     }
-
     return response.json();
 }
 
@@ -318,17 +278,15 @@ async function resetarSenha(email, codigo, novaSenha) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, codigo, novaSenha })
     });
-
     if (!response.ok) {
         const data = await response.json();
         throw new Error(data.erro || 'Erro ao redefinir senha');
     }
-
     return response.json();
 }
 
 // ============================================================
-//  EXPORTAR FUNÇÕES
+//  EXPORTAR
 // ============================================================
 
 window.getToken = getToken;
@@ -336,7 +294,6 @@ window.getUsuario = getUsuario;
 window.logout = logout;
 window.verificarAutenticacao = verificarAutenticacao;
 window.apiRequest = apiRequest;
-
 window.carregarTarefas = carregarTarefas;
 window.carregarTarefasAssistencia = carregarTarefasAssistencia;
 window.criarTarefa = criarTarefa;
@@ -345,16 +302,9 @@ window.atualizarStatusTarefa = atualizarStatusTarefa;
 window.alternarSubtarefa = alternarSubtarefa;
 window.deletarTarefa = deletarTarefa;
 window.listarUsuarios = listarUsuarios;
-
 window.aprovarTarefa = aprovarTarefa;
 window.desaprovarTarefa = desaprovarTarefa;
-
 window.solicitarRecuperacao = solicitarRecuperacao;
 window.resetarSenha = resetarSenha;
 
 console.log('✅ auth.js carregado com sucesso!');
-console.log('📋 Funções disponíveis:');
-console.log('   - Autenticação: login, cadastro, logout');
-console.log('   - Tarefas: criar, editar, deletar, listar');
-console.log('   - Aprovação: aprovarTarefa, desaprovarTarefa');
-console.log('   - Recuperação: solicitarRecuperacao, resetarSenha');

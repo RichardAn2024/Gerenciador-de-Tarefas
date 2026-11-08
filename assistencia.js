@@ -1,6 +1,6 @@
 /* ============================================================
    assistencia.js - Lógica da página de Assistência Técnica
-   (COM AGUARDANDO APROVAÇÃO)
+   (COM OBSERVAÇÃO, SELO DE APROVADO E DATA DE FINALIZAÇÃO)
    ============================================================ */
 
 // --- Estado ---
@@ -24,11 +24,8 @@ const clearAllBtn = document.getElementById('clearAllBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 const userName = document.getElementById('userName');
 
-// --- Pesquisa ---
 const searchInput = document.getElementById('searchInput');
 const clearSearchBtn = document.getElementById('clearSearchBtn');
-
-// --- Ordenação ---
 const sortBy = document.getElementById('sortBy');
 
 // --- Modal de Criação ---
@@ -37,6 +34,7 @@ const createTitle = document.getElementById('createTitle');
 const createTag = document.getElementById('createTag');
 const createResponsaveis = document.getElementById('createResponsaveis');
 const createPrazo = document.getElementById('createPrazo');
+const createObservacao = document.getElementById('createObservacao');
 const subtaskList = document.getElementById('subtaskList');
 const addSubtaskBtn = document.getElementById('addSubtaskBtn');
 const saveCreateBtn = document.getElementById('saveCreateBtn');
@@ -49,13 +47,13 @@ const editTitle = document.getElementById('editTitle');
 const editTag = document.getElementById('editTag');
 const editResponsaveis = document.getElementById('editResponsaveis');
 const editPrazo = document.getElementById('editPrazo');
+const editObservacao = document.getElementById('editObservacao');
 const editSubtaskList = document.getElementById('editSubtaskList');
 const addEditSubtaskBtn = document.getElementById('addEditSubtaskBtn');
 const saveEditBtn = document.getElementById('saveEditBtn');
 const cancelEditBtn = document.getElementById('cancelEditBtn');
 const closeModalBtn = document.getElementById('closeModalBtn');
 
-// --- Filtro Responsável ---
 const filterResponsavel = document.getElementById('filterResponsavel');
 
 // --- Modal de Confirmação ---
@@ -171,7 +169,7 @@ async function carregarTarefasDoServidor() {
 }
 
 // ============================================================
-//  ORDENAÇÃO - SÓ QUANDO SELECIONADO
+//  ORDENAÇÃO
 // ============================================================
 
 function sortTasks(tasks) {
@@ -211,6 +209,27 @@ function sortTasks(tasks) {
 }
 
 // ============================================================
+//  VISIBILIDADE DOS CABEÇALHOS
+// ============================================================
+
+function updateColumnHeadersVisibility() {
+    const hasStatusFilter = currentFilter !== 'all';
+
+    document.querySelectorAll('.column').forEach(column => {
+        const columnStatus = column.dataset.status;
+        const header = column.querySelector('.column-header');
+
+        if (!header) return;
+
+        if (hasStatusFilter) {
+            header.style.display = (columnStatus === currentFilter) ? 'flex' : 'none';
+        } else {
+            header.style.display = 'flex';
+        }
+    });
+}
+
+// ============================================================
 //  RENDERIZAÇÃO
 // ============================================================
 
@@ -236,7 +255,6 @@ function render() {
     }
 
     filtered = sortTasks(filtered);
-
     const paginatedTasks = getPaginatedTasks(filtered);
 
     for (const status of ['todo', 'doing', 'approval', 'done']) {
@@ -244,36 +262,57 @@ function render() {
         list.innerHTML = '';
     }
 
-    for (const status of ['todo', 'doing', 'approval', 'done']) {
-        const list = document.getElementById(statusMap[status].listId);
-        const tasksInStatus = paginatedTasks.filter(t => t.status === status);
+    const hasStatusFilter = currentFilter !== 'all';
 
-        if (tasksInStatus.length === 0) {
-            const empty = document.createElement('div');
-            empty.className = 'empty-state';
+    if (hasStatusFilter && filtered.length > 0) {
+        const columns = ['todo', 'doing', 'approval', 'done'];
+        const tasksPerCol = Math.ceil(filtered.length / columns.length);
 
-            if (currentSearchTerm.trim() !== '') {
-                empty.textContent = `Nenhuma tarefa de assistência encontrada para "${currentSearchTerm}"`;
-            } else {
-                empty.textContent = 'Nenhuma tarefa de assistência aqui';
+        columns.forEach((status, index) => {
+            const list = document.getElementById(statusMap[status].listId);
+            const tasksForColumn = filtered.slice(index * tasksPerCol, Math.min((index + 1) * tasksPerCol, filtered.length));
+
+            if (tasksForColumn.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'empty-state';
+                empty.textContent = 'Nenhuma tarefa aqui';
+                list.appendChild(empty);
+                return;
             }
-            list.appendChild(empty);
-            continue;
-        }
 
-        tasksInStatus.forEach(task => {
-            const card = createTaskCard(task);
-            list.appendChild(card);
+            tasksForColumn.forEach(task => {
+                const card = createTaskCard(task);
+                list.appendChild(card);
+            });
         });
+    } else {
+        for (const status of ['todo', 'doing', 'approval', 'done']) {
+            const list = document.getElementById(statusMap[status].listId);
+            const tasksInStatus = paginatedTasks.filter(t => t.status === status);
+
+            if (tasksInStatus.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'empty-state';
+                empty.textContent = currentSearchTerm.trim() !== '' ? `Nenhuma tarefa encontrada para "${currentSearchTerm}"` : 'Nenhuma tarefa de assistência aqui';
+                list.appendChild(empty);
+                continue;
+            }
+
+            tasksInStatus.forEach(task => {
+                const card = createTaskCard(task);
+                list.appendChild(card);
+            });
+        }
     }
 
+    updateColumnHeadersVisibility();
     renderPagination(filtered.length);
     updateCounters();
     updateStats();
 }
 
 // ============================================================
-//  PAGINAÇÃO: 10 TAREFAS POR COLUNA
+//  PAGINAÇÃO
 // ============================================================
 
 function getPaginatedTasks(filteredTasks) {
@@ -301,71 +340,39 @@ function getPaginatedTasks(filteredTasks) {
     const endIndex = startIndex + tasksPerColumn;
 
     const result = [];
-
     for (const status of ['todo', 'doing', 'approval', 'done']) {
         const tasks = tasksByStatus[status] || [];
-        const pageTasks = tasks.slice(startIndex, endIndex);
-        result.push(...pageTasks);
+        result.push(...tasks.slice(startIndex, endIndex));
     }
 
     return result;
 }
 
-// ============================================================
-//  PAGINAÇÃO - TOPO E RODAPÉ
-// ============================================================
-
 function renderPagination(totalTasks) {
     const containers = [
-        {
-            container: document.getElementById('paginationContainerTop'),
-            info: document.getElementById('paginationInfoTop'),
-            prevBtn: document.getElementById('prevPageBtnTop'),
-            nextBtn: document.getElementById('nextPageBtnTop'),
-            pageNumbers: document.getElementById('pageNumbersTop')
-        },
-        {
-            container: document.getElementById('paginationContainerBottom'),
-            info: document.getElementById('paginationInfoBottom'),
-            prevBtn: document.getElementById('prevPageBtnBottom'),
-            nextBtn: document.getElementById('nextPageBtnBottom'),
-            pageNumbers: document.getElementById('pageNumbersBottom')
-        }
+        { container: document.getElementById('paginationContainerTop'), info: document.getElementById('paginationInfoTop'), prevBtn: document.getElementById('prevPageBtnTop'), nextBtn: document.getElementById('nextPageBtnTop'), pageNumbers: document.getElementById('pageNumbersTop') },
+        { container: document.getElementById('paginationContainerBottom'), info: document.getElementById('paginationInfoBottom'), prevBtn: document.getElementById('prevPageBtnBottom'), nextBtn: document.getElementById('nextPageBtnBottom'), pageNumbers: document.getElementById('pageNumbersBottom') }
     ];
 
     if (totalTasks === 0) {
-        containers.forEach(c => {
-            if (c.container) c.container.style.display = 'none';
-        });
+        containers.forEach(c => { if (c.container) c.container.style.display = 'none'; });
         return;
     }
 
-    containers.forEach(c => {
-        if (c.container) c.container.style.display = 'flex';
-    });
+    containers.forEach(c => { if (c.container) c.container.style.display = 'flex'; });
 
     containers.forEach(c => {
         if (!c.info) return;
-
         c.info.textContent = `Página ${currentPage} de ${totalPages}`;
-
         if (c.prevBtn) c.prevBtn.disabled = currentPage <= 1;
         if (c.nextBtn) c.nextBtn.disabled = currentPage >= totalPages;
 
         if (c.pageNumbers) {
             c.pageNumbers.innerHTML = '';
-
             let startPage = Math.max(1, currentPage - 3);
             let endPage = Math.min(totalPages, currentPage + 3);
-
-            if (currentPage <= 3) {
-                endPage = Math.min(totalPages, 7);
-            }
-
-            if (currentPage >= totalPages - 2) {
-                startPage = Math.max(1, totalPages - 6);
-            }
-
+            if (currentPage <= 3) endPage = Math.min(totalPages, 7);
+            if (currentPage >= totalPages - 2) startPage = Math.max(1, totalPages - 6);
             addPageNumbersToContainer(c.pageNumbers, startPage, endPage);
         }
     });
@@ -373,7 +380,6 @@ function renderPagination(totalTasks) {
 
 function addPageNumbersToContainer(container, startPage, endPage) {
     if (!container) return;
-
     if (startPage > 1) {
         addPageNumberToContainer(container, 1);
         if (startPage > 2) {
@@ -383,11 +389,7 @@ function addPageNumbersToContainer(container, startPage, endPage) {
             container.appendChild(dots);
         }
     }
-
-    for (let i = startPage; i <= endPage; i++) {
-        addPageNumberToContainer(container, i);
-    }
-
+    for (let i = startPage; i <= endPage; i++) addPageNumberToContainer(container, i);
     if (endPage < totalPages) {
         if (endPage < totalPages - 1) {
             const dots = document.createElement('span');
@@ -403,42 +405,25 @@ function addPageNumberToContainer(container, page) {
     const btn = document.createElement('button');
     btn.className = `page-number-btn${page === currentPage ? ' active' : ''}`;
     btn.textContent = page;
-    btn.addEventListener('click', () => {
-        currentPage = page;
-        render();
-    });
+    btn.addEventListener('click', () => { currentPage = page; render(); });
     container.appendChild(btn);
 }
 
 // ============================================================
-//  FUNÇÃO PARA AJUSTAR DATA
-// ============================================================
-
-function ajustarDataParaLocal(dataStr) {
-    return dataStr;
-}
-
-// ============================================================
-//  CRIAÇÃO DO CARD
+//  CRIAÇÃO DO CARD (COM OBSERVAÇÃO E FINALIZAÇÃO)
 // ============================================================
 
 function createTaskCard(task) {
     const card = document.createElement('div');
     card.className = 'task-card';
+    if (task.aprovado === 1) card.classList.add('aprovada');
     card.draggable = true;
     card.dataset.id = task.id;
 
-    const borderColors = {
-        todo: '#2196F3',
-        doing: '#F57C00',
-        approval: '#F57C00',
-        done: '#00a86b'
-    };
+    const borderColors = { todo: '#2196F3', doing: '#F57C00', approval: '#F57C00', done: '#00a86b' };
     card.style.borderLeftColor = borderColors[task.status] || '#2196F3';
 
-    if (task.status === 'approval') {
-        card.style.background = '#fffde7';
-    }
+    if (task.status === 'approval') card.style.background = '#fffde7';
 
     const isOverdue = task.prazo && task.status !== 'done' && new Date(task.prazo) < new Date();
     if (isOverdue) {
@@ -449,9 +434,15 @@ function createTaskCard(task) {
     const title = document.createElement('div');
     title.className = 'task-title';
     title.textContent = task.titulo;
-    if (isOverdue) {
-        title.innerHTML += ' <span style="color:#ff4d4f;font-size:12px;">🔴 ATRASADA</span>';
+
+    if (task.aprovado === 1) {
+        const stamp = document.createElement('span');
+        stamp.className = 'stamp-approved';
+        stamp.textContent = '✅ APROVADO';
+        title.appendChild(stamp);
     }
+
+    if (isOverdue) title.innerHTML += ' <span style="color:#ff4d4f;font-size:12px;">🔴 ATRASADA</span>';
     card.appendChild(title);
 
     if (task.criador_nome) {
@@ -476,12 +467,10 @@ function createTaskCard(task) {
     if (task.responsaveis_nomes && task.responsaveis_nomes.length > 0) {
         const responsavelEl = document.createElement('div');
         responsavelEl.className = 'task-responsavel';
-
         const nomes = task.responsaveis_nomes.map(nome => {
             const isEu = usuarioLogado && task.responsaveis_ids.includes(usuarioLogado.id);
             return isEu ? `Eu (${nome})` : nome;
         }).join(', ');
-
         responsavelEl.innerHTML = `👤 <strong>Responsáveis:</strong> ${nomes}`;
         responsavelEl.style.background = '#e3f2fd';
         responsavelEl.style.border = '1px solid #2196F3';
@@ -514,37 +503,46 @@ function createTaskCard(task) {
         card.appendChild(prazoEl);
     }
 
+    // --- EXIBIR OBSERVAÇÃO ---
+    if (task.observacao) {
+        const obsEl = document.createElement('div');
+        obsEl.className = 'task-observacao';
+        obsEl.innerHTML = `📝 <strong>Obs:</strong> ${task.observacao}`;
+        obsEl.style.cssText = 'font-size: 12px; color: #555; background: #f9f9f9; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; white-space: pre-wrap; border-left: 2px solid #2196F3;';
+        card.appendChild(obsEl);
+    }
+
+    if (task.status === 'done' && task.data_finalizacao) {
+        const finalizadoEl = document.createElement('div');
+        finalizadoEl.className = 'task-date task-finalizado';
+        finalizadoEl.innerHTML = `✅ Finalizado em: ${formatarData(task.data_finalizacao)}`;
+        finalizadoEl.style.cssText = 'color: #2e7d32; font-weight: bold; background: #e8f5e9; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px;';
+        card.appendChild(finalizadoEl);
+    }
+
     const subtasksEl = document.createElement('div');
     subtasksEl.className = 'task-subtasks';
     if (task.subtarefas && task.subtarefas.length > 0) {
         const doneCount = task.subtarefas.filter(s => s.concluida).length;
-        const totalCount = task.subtarefas.length;
         const countInfo = document.createElement('div');
         countInfo.style.cssText = 'font-size: 11px; color: #8c929a; margin-bottom: 4px;';
-        countInfo.textContent = `📋 ${doneCount}/${totalCount} concluídas`;
+        countInfo.textContent = `📋 ${doneCount}/${task.subtarefas.length} concluídas`;
         subtasksEl.appendChild(countInfo);
 
         task.subtarefas.forEach(subtask => {
             const item = document.createElement('div');
             item.className = 'subtask-item';
-
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.checked = subtask.concluida === 1;
-            checkbox.addEventListener('change', () => {
-                toggleSubtask(task.id, subtask.id);
-            });
-
+            checkbox.addEventListener('change', () => toggleSubtask(task.id, subtask.id));
             const text = document.createElement('span');
             text.className = 'subtask-text' + (subtask.concluida ? ' done' : '');
             text.textContent = subtask.texto;
-
             item.appendChild(checkbox);
             item.appendChild(text);
             subtasksEl.appendChild(item);
         });
-    }
-    if (task.subtarefas && task.subtarefas.length > 0) {
         card.appendChild(subtasksEl);
     }
 
@@ -556,15 +554,8 @@ function createTaskCard(task) {
     if (task.tag) {
         const span = document.createElement('span');
         span.className = `tag ${task.tag}`;
-        const icons = {
-            assistencia: '🔧',
-            urgent: '🔴',
-            important: '🟡',
-            tranquilo: '🔵'
-        };
-        const tagName = task.tag === 'assistencia' ? 'Assistência' :
-            task.tag === 'tranquilo' ? 'Tranquilo' :
-                task.tag.charAt(0).toUpperCase() + task.tag.slice(1);
+        const icons = { assistencia: '🔧', urgent: '🔴', important: '🟡', tranquilo: '🔵' };
+        const tagName = task.tag === 'assistencia' ? 'Assistência' : task.tag === 'tranquilo' ? 'Tranquilo' : task.tag.charAt(0).toUpperCase() + task.tag.slice(1);
         span.textContent = `${icons[task.tag] || ''} ${tagName}`;
         if (task.tag === 'assistencia') {
             span.style.background = '#e3f2fd';
@@ -579,66 +570,49 @@ function createTaskCard(task) {
     const editBtn = document.createElement('button');
     editBtn.innerHTML = '✏️';
     editBtn.className = 'edit-btn';
-    editBtn.title = 'Editar tarefa';
-    editBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openEditModal(task.id);
-    });
+    editBtn.title = 'Editar';
+    editBtn.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(task.id); });
+
+    const backBtn = document.createElement('button');
+    backBtn.innerHTML = '⬅️';
+    backBtn.title = 'Voltar status';
+    backBtn.addEventListener('click', (e) => { e.stopPropagation(); moveTask(task.id, -1); });
 
     const forwardBtn = document.createElement('button');
     forwardBtn.innerHTML = '➡️';
     forwardBtn.title = 'Avançar status';
     forwardBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        if (task.status === 'approval' && task.aprovado === 0) {
+            alert('⚠️ Esta tarefa precisa ser aprovada antes de avançar!');
+            return;
+        }
         moveTask(task.id, 1);
     });
 
-    const backBtn = document.createElement('button');
-    backBtn.innerHTML = '⬅️';
-    backBtn.title = 'Voltar status';
-    backBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        moveTask(task.id, -1);
-    });
-
-    // Botão Aprovar (só aparece se status for 'approval')
-    if (task.status === 'approval') {
+    if (task.status === 'approval' && task.aprovado === 0) {
         const approveBtn = document.createElement('button');
         approveBtn.innerHTML = '✅';
-        approveBtn.title = 'Aprovar tarefa';
+        approveBtn.title = 'Aprovar';
         approveBtn.className = 'approve-btn';
-        approveBtn.addEventListener('click', (e) => {
+        approveBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
             if (confirm('Aprovar esta tarefa?')) {
-                moveTask(task.id, 0, 'done');
+                try {
+                    await aprovarTarefa(task.id);
+                    task.aprovado = 1;
+                    render();
+                } catch (error) { alert(error.message); }
             }
         });
         actions.appendChild(approveBtn);
     }
 
-    // Botão Rejeitar (só aparece se status for 'approval')
-    if (task.status === 'approval') {
-        const rejectBtn = document.createElement('button');
-        rejectBtn.innerHTML = '❌';
-        rejectBtn.title = 'Rejeitar tarefa';
-        rejectBtn.className = 'reject-btn';
-        rejectBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (confirm('Rejeitar esta tarefa? Ela voltará para "Em Andamento".')) {
-                moveTask(task.id, 0, 'doing');
-            }
-        });
-        actions.appendChild(rejectBtn);
-    }
-
     const deleteBtn = document.createElement('button');
     deleteBtn.innerHTML = '🗑️';
     deleteBtn.className = 'delete-btn';
-    deleteBtn.title = 'Excluir tarefa';
-    deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        confirmarExclusao(task.id);
-    });
+    deleteBtn.title = 'Excluir';
+    deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); confirmarExclusao(task.id); });
 
     actions.appendChild(editBtn);
     actions.appendChild(backBtn);
@@ -678,29 +652,27 @@ document.querySelectorAll('.column').forEach(column => {
         e.dataTransfer.dropEffect = 'move';
         column.classList.add('drag-over');
     });
-
-    column.addEventListener('dragleave', () => {
-        column.classList.remove('drag-over');
-    });
-
+    column.addEventListener('dragleave', () => column.classList.remove('drag-over'));
     column.addEventListener('drop', async (e) => {
         e.preventDefault();
         column.classList.remove('drag-over');
-        const newStatus = column.dataset.status;
-        if (draggedTaskId !== null) {
-            await moveTask(draggedTaskId, 0, newStatus);
-        }
+        if (draggedTaskId !== null) await moveTask(draggedTaskId, 0, column.dataset.status);
         draggedTaskId = null;
     });
 });
 
 // ============================================================
-//  FUNÇÕES DE MANIPULAÇÃO - COM APPROVAL
+//  MANIPULAÇÃO
 // ============================================================
 
 async function moveTask(id, direction, targetStatus = null) {
     const task = tarefas.find(t => t.id === id);
     if (!task) return;
+
+    if (task.status === 'approval' && direction > 0 && task.aprovado === 0) {
+        alert('⚠️ Esta tarefa precisa ser aprovada antes de avançar!');
+        return;
+    }
 
     let newStatus = targetStatus;
     if (!newStatus) {
@@ -712,17 +684,37 @@ async function moveTask(id, direction, targetStatus = null) {
     }
 
     try {
+        if (task.status === 'approval' && newStatus === 'doing' && task.aprovado === 1) {
+            await desaprovarTarefa(id);
+            task.aprovado = 0;
+        }
         await atualizarStatusTarefa(id, newStatus);
         task.status = newStatus;
         render();
-    } catch (error) {
-        alert(error.message);
-    }
+    } catch (error) { alert(error.message); }
 }
 
-// ============================================================
-//  ALTERNAR SUBTAREFA
-// ============================================================
+async function verificarEAtualizarStatusTarefa(taskId) {
+    const task = tarefas.find(t => t.id === taskId);
+    if (!task || !task.subtarefas || task.subtarefas.length === 0) return;
+
+    const todasConcluidas = task.subtarefas.every(s => s.concluida === 1);
+    const algumaConcluida = task.subtarefas.some(s => s.concluida === 1);
+    let novoStatus = null;
+
+    if (todasConcluidas && task.status !== 'approval' && task.status !== 'done') novoStatus = 'approval';
+    else if (todasConcluidas && task.status === 'approval') novoStatus = 'done';
+    else if (algumaConcluida && task.status === 'todo') novoStatus = 'doing';
+    else if (!algumaConcluida && (task.status === 'doing' || task.status === 'approval')) novoStatus = 'todo';
+
+    if (novoStatus && novoStatus !== task.status) {
+        try {
+            await atualizarStatusTarefa(taskId, novoStatus);
+            task.status = novoStatus;
+            render();
+        } catch (error) { console.error('Erro ao atualizar status:', error); }
+    }
+}
 
 async function toggleSubtask(taskId, subtaskId) {
     const task = tarefas.find(t => t.id === taskId);
@@ -731,50 +723,16 @@ async function toggleSubtask(taskId, subtaskId) {
     if (!subtask) return;
 
     const novaConcluida = subtask.concluida ? 0 : 1;
-
     try {
         await alternarSubtarefa(subtaskId, novaConcluida);
         subtask.concluida = novaConcluida;
         await verificarEAtualizarStatusTarefa(taskId);
         render();
-    } catch (error) {
-        alert(error.message);
-    }
-}
-
-async function verificarEAtualizarStatusTarefa(taskId) {
-    const task = tarefas.find(t => t.id === taskId);
-    if (!task) return;
-    if (!task.subtarefas || task.subtarefas.length === 0) return;
-
-    const todasConcluidas = task.subtarefas.every(s => s.concluida === 1);
-    const algumaConcluida = task.subtarefas.some(s => s.concluida === 1);
-
-    let novoStatus = null;
-
-    if (todasConcluidas && task.status !== 'approval' && task.status !== 'done') {
-        novoStatus = 'approval';
-    } else if (todasConcluidas && task.status === 'approval') {
-        novoStatus = 'done';
-    } else if (algumaConcluida && task.status === 'todo') {
-        novoStatus = 'doing';
-    } else if (!algumaConcluida && (task.status === 'doing' || task.status === 'approval')) {
-        novoStatus = 'todo';
-    }
-
-    if (novoStatus && novoStatus !== task.status) {
-        try {
-            await atualizarStatusTarefa(taskId, novoStatus);
-            task.status = novoStatus;
-            render();
-        } catch (error) {
-            console.error('Erro ao atualizar status:', error);
-        }
-    }
+    } catch (error) { alert(error.message); }
 }
 
 // ============================================================
-//  MODAL DE CRIAÇÃO
+//  MODAIS E FUNÇÕES AUXILIARES
 // ============================================================
 
 function openCreateModal() {
@@ -782,37 +740,26 @@ function openCreateModal() {
     createTag.value = 'assistencia';
     Array.from(createResponsaveis.options).forEach(opt => opt.selected = false);
     createPrazo.value = '';
+    createObservacao.value = '';
     subtaskList.innerHTML = '';
     createModal.classList.add('active');
     createTitle.focus();
 }
 
-function closeCreateModal() {
-    createModal.classList.remove('active');
-    createTitle.value = '';
-    createTag.value = 'assistencia';
-    Array.from(createResponsaveis.options).forEach(opt => opt.selected = false);
-    createPrazo.value = '';
-    subtaskList.innerHTML = '';
-}
+function closeCreateModal() { createModal.classList.remove('active'); }
 
 function addSubtaskInput(container) {
     const row = document.createElement('div');
     row.className = 'subtask-input-row';
-
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = 'Digite a subtarefa...';
     input.className = 'subtask-input';
-
     const removeBtn = document.createElement('button');
     removeBtn.className = 'remove-subtask-btn';
     removeBtn.textContent = '✕';
     removeBtn.type = 'button';
-    removeBtn.addEventListener('click', () => {
-        row.remove();
-    });
-
+    removeBtn.addEventListener('click', () => row.remove());
     row.appendChild(input);
     row.appendChild(removeBtn);
     container.appendChild(row);
@@ -821,13 +768,9 @@ function addSubtaskInput(container) {
 
 function getSubtasksFromContainer(container) {
     const subtasks = [];
-    const rows = container.querySelectorAll('.subtask-input-row');
-    rows.forEach(row => {
-        const input = row.querySelector('input[type="text"]');
-        const text = input.value.trim();
-        if (text) {
-            subtasks.push({ texto: text, concluida: 0 });
-        }
+    container.querySelectorAll('.subtask-input-row').forEach(row => {
+        const text = row.querySelector('input[type="text"]').value.trim();
+        if (text) subtasks.push({ texto: text, concluida: 0 });
     });
     return subtasks;
 }
@@ -838,33 +781,19 @@ function loadSubtasksIntoContainer(container, subtasks) {
         subtasks.forEach(subtask => {
             const row = document.createElement('div');
             row.className = 'subtask-input-row';
-
             const input = document.createElement('input');
             input.type = 'text';
             input.value = subtask.texto;
             input.className = 'subtask-input';
-
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.checked = subtask.concluida === 1;
             checkbox.style.cssText = 'width: 16px; height: 16px; accent-color: #2196F3; cursor: pointer;';
-            checkbox.addEventListener('change', () => {
-                input.style.textDecoration = checkbox.checked ? 'line-through' : 'none';
-                input.style.color = checkbox.checked ? '#8c929a' : '#1a1a1a';
-            });
-            if (subtask.concluida) {
-                input.style.textDecoration = 'line-through';
-                input.style.color = '#8c929a';
-            }
-
             const removeBtn = document.createElement('button');
             removeBtn.className = 'remove-subtask-btn';
             removeBtn.textContent = '✕';
             removeBtn.type = 'button';
-            removeBtn.addEventListener('click', () => {
-                row.remove();
-            });
-
+            removeBtn.addEventListener('click', () => row.remove());
             row.appendChild(checkbox);
             row.appendChild(input);
             row.appendChild(removeBtn);
@@ -875,171 +804,103 @@ function loadSubtasksIntoContainer(container, subtasks) {
 
 function getEditSubtasks() {
     const subtasks = [];
-    const rows = editSubtaskList.querySelectorAll('.subtask-input-row');
-    rows.forEach(row => {
+    editSubtaskList.querySelectorAll('.subtask-input-row').forEach(row => {
         const checkbox = row.querySelector('input[type="checkbox"]');
-        const input = row.querySelector('input[type="text"]');
-        const text = input.value.trim();
-        if (text) {
-            subtasks.push({
-                texto: text,
-                concluida: checkbox ? (checkbox.checked ? 1 : 0) : 0
-            });
-        }
+        const text = row.querySelector('input[type="text"]').value.trim();
+        if (text) subtasks.push({ texto: text, concluida: checkbox && checkbox.checked ? 1 : 0 });
     });
     return subtasks;
 }
 
-// ============================================================
-//  CRIAR TAREFA
-// ============================================================
-
 async function createTask() {
     const titulo = createTitle.value.trim();
-    if (titulo === '') {
-        alert('Digite um título para a tarefa.');
-        return;
-    }
-
+    if (!titulo) return alert('Digite um título.');
     const tag = 'assistencia';
-    const responsaveis = Array.from(createResponsaveis.selectedOptions)
-        .map(opt => parseInt(opt.value))
-        .filter(id => !isNaN(id) && id > 0);
-
+    const responsaveis = Array.from(createResponsaveis.selectedOptions).map(opt => parseInt(opt.value)).filter(id => !isNaN(id) && id > 0);
     const prazo = createPrazo.value || null;
+    const observacao = createObservacao.value.trim() || null;
     const subtarefas = getSubtasksFromContainer(subtaskList);
 
     try {
-        await criarTarefa(titulo, tag, subtarefas, responsaveis, prazo);
+        await criarTarefa(titulo, tag, subtarefas, responsaveis, prazo, observacao);
         await carregarTarefasDoServidor();
         closeCreateModal();
         render();
-    } catch (error) {
-        alert(error.message);
-    }
+    } catch (error) { alert(error.message); }
 }
-
-// ============================================================
-//  EDIÇÃO DE TAREFAS
-// ============================================================
 
 function openEditModal(taskId) {
     const task = tarefas.find(t => t.id === taskId);
     if (!task) return;
-
     editingTaskId = taskId;
     editTitle.value = task.titulo;
     editTag.value = task.tag || 'assistencia';
-
-    const responsaveisIds = task.responsaveis_ids || [];
-    Array.from(editResponsaveis.options).forEach(opt => {
-        opt.selected = responsaveisIds.includes(parseInt(opt.value));
-    });
-
+    Array.from(editResponsaveis.options).forEach(opt => opt.selected = (task.responsaveis_ids || []).includes(parseInt(opt.value)));
     editPrazo.value = task.prazo || '';
+    editObservacao.value = task.observacao || '';
     loadSubtasksIntoContainer(editSubtaskList, task.subtarefas || []);
     editModal.classList.add('active');
     editTitle.focus();
 }
 
-function closeEditModal() {
-    editModal.classList.remove('active');
-    editingTaskId = null;
-    editTitle.value = '';
-    editTag.value = 'assistencia';
-    Array.from(editResponsaveis.options).forEach(opt => opt.selected = false);
-    editPrazo.value = '';
-    editSubtaskList.innerHTML = '';
-}
+function closeEditModal() { editModal.classList.remove('active'); editingTaskId = null; }
 
 async function salvarEdicaoComVerificacao() {
     if (editingTaskId === null) return;
-
     const titulo = editTitle.value.trim();
-    if (titulo === '') {
-        alert('O título não pode ficar vazio.');
-        return;
-    }
-
+    if (!titulo) return alert('O título não pode ficar vazio.');
     const tag = 'assistencia';
-    const responsaveis = Array.from(editResponsaveis.selectedOptions)
-        .map(opt => parseInt(opt.value))
-        .filter(id => !isNaN(id) && id > 0);
-
+    const responsaveis = Array.from(editResponsaveis.selectedOptions).map(opt => parseInt(opt.value)).filter(id => !isNaN(id) && id > 0);
     const prazo = editPrazo.value || null;
+    const observacao = editObservacao.value.trim() || null;
     const subtarefas = getEditSubtasks();
 
     try {
-        await atualizarTarefa(editingTaskId, titulo, tag, subtarefas, responsaveis, prazo);
+        await atualizarTarefa(editingTaskId, titulo, tag, subtarefas, responsaveis, prazo, observacao);
         await carregarTarefasDoServidor();
+        const task = tarefas.find(t => t.id === editingTaskId);
+        if (task && task.subtarefas && task.subtarefas.length > 0) await verificarEAtualizarStatusTarefa(editingTaskId);
         closeEditModal();
         render();
-    } catch (error) {
-        alert(error.message);
-    }
+    } catch (error) { alert(error.message); }
 }
-
-// ============================================================
-//  EXCLUSÃO
-// ============================================================
 
 let pendingDeleteId = null;
 
 function confirmarExclusao(taskId) {
     pendingDeleteId = taskId;
     confirmTitle.textContent = '🗑️ Excluir Tarefa';
-    confirmMessage.textContent = 'Tem certeza que deseja excluir esta tarefa permanentemente? Esta ação não pode ser desfeita.';
+    confirmMessage.textContent = 'Tem certeza que deseja excluir esta tarefa permanentemente?';
     confirmModal.classList.add('active');
-
     confirmActionBtn.onclick = executarExclusao;
 }
 
 async function executarExclusao() {
     if (pendingDeleteId === null) return;
-
     try {
         await deletarTarefa(pendingDeleteId);
         await carregarTarefasDoServidor();
         closeConfirmModal();
         render();
-    } catch (error) {
-        alert(error.message);
-    }
+    } catch (error) { alert(error.message); }
 }
 
-function closeConfirmModal() {
-    confirmModal.classList.remove('active');
-    pendingDeleteId = null;
-}
-
-// ============================================================
-//  LIMPAR TUDO
-// ============================================================
+function closeConfirmModal() { confirmModal.classList.remove('active'); pendingDeleteId = null; }
 
 async function clearAllTasks() {
     if (tarefas.length === 0) return;
-
     confirmTitle.textContent = '⚠️ Limpar Todas as Tarefas';
-    confirmMessage.textContent = `Tem certeza que deseja excluir TODAS as ${tarefas.length} tarefas de assistência? Esta ação não pode ser desfeita.`;
+    confirmMessage.textContent = `Tem certeza que deseja excluir TODAS as ${tarefas.length} tarefas de assistência?`;
     confirmModal.classList.add('active');
-
     confirmActionBtn.onclick = async () => {
         try {
-            for (const task of tarefas) {
-                await deletarTarefa(task.id);
-            }
+            for (const task of tarefas) await deletarTarefa(task.id);
             await carregarTarefasDoServidor();
             closeConfirmModal();
             render();
-        } catch (error) {
-            alert(error.message);
-        }
+        } catch (error) { alert(error.message); }
     };
 }
-
-// ============================================================
-//  CONTADORES E ESTATÍSTICAS
-// ============================================================
 
 function updateCounters() {
     for (const status of ['todo', 'doing', 'approval', 'done']) {
@@ -1053,7 +914,6 @@ function updateStats() {
     const total = tarefas.length;
     const done = tarefas.filter(t => t.status === 'done').length;
     const pending = total - done;
-
     const hoje = new Date();
     const overdue = tarefas.filter(t => t.prazo && t.status !== 'done' && new Date(t.prazo) < hoje).length;
 
@@ -1063,18 +923,12 @@ function updateStats() {
     document.getElementById('overdueTasksAssist').textContent = overdue;
 }
 
-// ============================================================
-//  FORMATAR DATA
-// ============================================================
-
 function formatarData(dataStr) {
     if (!dataStr) return 'Sem data';
-
     if (dataStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const partes = dataStr.split('-');
         return `${partes[2]}/${partes[1]}/${partes[0]}`;
     }
-
     try {
         const data = new Date(dataStr);
         if (isNaN(data.getTime())) return dataStr;
@@ -1082,14 +936,8 @@ function formatarData(dataStr) {
         const mes = String(data.getMonth() + 1).padStart(2, '0');
         const ano = data.getFullYear();
         return `${dia}/${mes}/${ano}`;
-    } catch {
-        return dataStr;
-    }
+    } catch { return dataStr; }
 }
-
-// ============================================================
-//  FILTROS - COM RESET DE PÁGINA
-// ============================================================
 
 document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1109,112 +957,46 @@ if (filterResponsavel) {
     });
 }
 
-// ============================================================
-//  CONFIGURAR EVENTOS
-// ============================================================
-
 function configurarEventos() {
-    // --- Criação ---
     openCreateBtn.addEventListener('click', openCreateModal);
     saveCreateBtn.addEventListener('click', createTask);
     cancelCreateBtn.addEventListener('click', closeCreateModal);
     closeCreateModalBtn.addEventListener('click', closeCreateModal);
-    createModal.addEventListener('click', (e) => {
-        if (e.target === createModal) closeCreateModal();
-    });
-    createTitle.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') createTask();
-    });
-    addSubtaskBtn.addEventListener('click', () => {
-        addSubtaskInput(subtaskList);
-    });
+    createModal.addEventListener('click', (e) => { if (e.target === createModal) closeCreateModal(); });
+    createTitle.addEventListener('keypress', (e) => { if (e.key === 'Enter') createTask(); });
+    addSubtaskBtn.addEventListener('click', () => addSubtaskInput(subtaskList));
 
-    // --- Edição ---
     saveEditBtn.addEventListener('click', salvarEdicaoComVerificacao);
     cancelEditBtn.addEventListener('click', closeEditModal);
     closeModalBtn.addEventListener('click', closeEditModal);
-    editModal.addEventListener('click', (e) => {
-        if (e.target === editModal) closeEditModal();
-    });
-    editTitle.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') salvarEdicaoComVerificacao();
-    });
-    addEditSubtaskBtn.addEventListener('click', () => {
-        addSubtaskInput(editSubtaskList);
-    });
+    editModal.addEventListener('click', (e) => { if (e.target === editModal) closeEditModal(); });
+    editTitle.addEventListener('keypress', (e) => { if (e.key === 'Enter') salvarEdicaoComVerificacao(); });
+    addEditSubtaskBtn.addEventListener('click', () => addSubtaskInput(editSubtaskList));
 
-    // --- Confirmação ---
     cancelConfirmBtn.addEventListener('click', closeConfirmModal);
     closeConfirmBtn.addEventListener('click', closeConfirmModal);
-    confirmModal.addEventListener('click', (e) => {
-        if (e.target === confirmModal) closeConfirmModal();
-    });
+    confirmModal.addEventListener('click', (e) => { if (e.target === confirmModal) closeConfirmModal(); });
 
-    // --- Limpar tudo ---
     clearAllBtn.addEventListener('click', clearAllTasks);
 
-    // --- Logout ---
     logoutBtn.addEventListener('click', () => {
         confirmTitle.textContent = '🚪 Sair';
         confirmMessage.textContent = 'Tem certeza que deseja sair?';
         confirmModal.classList.add('active');
-        confirmActionBtn.onclick = () => {
-            logout();
-            closeConfirmModal();
-        };
+        confirmActionBtn.onclick = () => { logout(); closeConfirmModal(); };
     });
 
-    // --- Pesquisa ---
-    searchInput.addEventListener('input', (e) => {
-        currentSearchTerm = e.target.value;
-        currentPage = 1;
-        render();
+    searchInput.addEventListener('input', (e) => { currentSearchTerm = e.target.value; currentPage = 1; render(); });
+    clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; currentSearchTerm = ''; currentPage = 1; render(); searchInput.focus(); });
+    if (sortBy) sortBy.addEventListener('change', () => { currentSort = sortBy.value; currentPage = 1; render(); });
+
+    document.querySelectorAll('#prevPageBtnTop, #prevPageBtnBottom').forEach(btn => {
+        if (btn) btn.addEventListener('click', () => { if (currentPage > 1) { currentPage--; render(); } });
+    });
+    document.querySelectorAll('#nextPageBtnTop, #nextPageBtnBottom').forEach(btn => {
+        if (btn) btn.addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; render(); } });
     });
 
-    clearSearchBtn.addEventListener('click', () => {
-        searchInput.value = '';
-        currentSearchTerm = '';
-        currentPage = 1;
-        render();
-        searchInput.focus();
-    });
-
-    // --- Ordenação ---
-    if (sortBy) {
-        sortBy.addEventListener('change', () => {
-            currentSort = sortBy.value;
-            currentPage = 1;
-            render();
-        });
-    }
-
-    // --- Paginação - Topo e Rodapé ---
-    const prevBtns = document.querySelectorAll('#prevPageBtnTop, #prevPageBtnBottom');
-    const nextBtns = document.querySelectorAll('#nextPageBtnTop, #nextPageBtnBottom');
-
-    prevBtns.forEach(btn => {
-        if (btn) {
-            btn.addEventListener('click', () => {
-                if (currentPage > 1) {
-                    currentPage--;
-                    render();
-                }
-            });
-        }
-    });
-
-    nextBtns.forEach(btn => {
-        if (btn) {
-            btn.addEventListener('click', () => {
-                if (currentPage < totalPages) {
-                    currentPage++;
-                    render();
-                }
-            });
-        }
-    });
-
-    // --- Fechar com ESC ---
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if (createModal.classList.contains('active')) closeCreateModal();
@@ -1226,3 +1008,4 @@ function configurarEventos() {
 
 window.carregarTarefasDoServidor = carregarTarefasDoServidor;
 window.render = render;
+window.verificarEAtualizarStatusTarefa = verificarEAtualizarStatusTarefa;

@@ -55,7 +55,7 @@
         <div class="toolbar">
             <button class="btn btn-primary" id="openCreateBtn">➕ Nova Tarefa</button>
 
-            <div class="search-container" style="flex: 1; max-width: 600px; min-width: 300px;">
+            <div class="search-container">
                 <input type="text" id="searchInput" placeholder="🔍 Pesquisar por título..." class="search-input" />
                 <button class="btn btn-outline btn-sm" id="clearSearchBtn">✕ Limpar</button>
             </div>
@@ -179,6 +179,10 @@
                 <label for="createPrazo">📅 Data de Prazo:</label>
                 <input type="date" id="createPrazo" />
 
+                <!-- NOVO CAMPO DE OBSERVAÇÃO -->
+                <label for="createObservacao">📝 Observação:</label>
+                <textarea id="createObservacao" rows="3" placeholder="Digite uma observação..."></textarea>
+
                 <div class="subtasks-section">
                     <label>📋 Subtarefas:</label>
                     <div id="subtaskList"></div>
@@ -221,6 +225,10 @@
 
                 <label for="editPrazo">📅 Data de Prazo:</label>
                 <input type="date" id="editPrazo" />
+
+                <!-- NOVO CAMPO DE OBSERVAÇÃO -->
+                <label for="editObservacao">📝 Observação:</label>
+                <textarea id="editObservacao" rows="3" placeholder="Digite uma observação..."></textarea>
 
                 <div class="subtasks-section">
                     <label>📋 Subtarefas:</label>

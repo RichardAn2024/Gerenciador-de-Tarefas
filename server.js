@@ -1,4 +1,4 @@
-// server.js - Versão com MySQL (persistente) - COM APROVAÇÃO E DESAPROVAÇÃO
+// server.js - Versão com MySQL (persistente) - COM OBSERVAÇÃO
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -108,13 +108,13 @@ async function deleteUsuario(id) {
 }
 
 // ============================================================
-//  GET TAREFAS - COM COLUNA APROVADO
+//  GET TAREFAS - COM OBSERVAÇÃO
 // ============================================================
 
 async function getTarefas() {
     try {
         const [rows] = await db.query(`
-            SELECT t.*, t.aprovado,
+            SELECT t.*, t.aprovado, t.observacao,
                    u.nome as criador_nome,
                    GROUP_CONCAT(DISTINCT r.usuario_id) as responsaveis_ids,
                    GROUP_CONCAT(DISTINCT u2.nome) as responsaveis_nomes
@@ -154,7 +154,7 @@ async function getTarefas() {
 async function getTarefasAssistencia() {
     try {
         const [rows] = await db.query(`
-            SELECT t.*, t.aprovado,
+            SELECT t.*, t.aprovado, t.observacao,
                    u.nome as criador_nome,
                    GROUP_CONCAT(DISTINCT r.usuario_id) as responsaveis_ids,
                    GROUP_CONCAT(DISTINCT u2.nome) as responsaveis_nomes
@@ -192,10 +192,10 @@ async function getTarefasAssistencia() {
 }
 
 // ============================================================
-//  CREATE TAREFA - COM COLUNA APROVADO
+//  CREATE TAREFA - COM OBSERVAÇÃO
 // ============================================================
 
-async function createTarefa(usuario_id, titulo, tag, subtarefas, responsaveis, prazo) {
+async function createTarefa(usuario_id, titulo, tag, subtarefas, responsaveis, prazo, observacao) {
     try {
         let prazoFormatado = null;
         if (prazo) {
@@ -207,8 +207,8 @@ async function createTarefa(usuario_id, titulo, tag, subtarefas, responsaveis, p
         }
 
         const [result] = await db.query(
-            'INSERT INTO tarefas (usuario_id, titulo, tag, prazo, aprovado) VALUES (?, ?, ?, ?, ?)',
-            [usuario_id, titulo, tag || '', prazoFormatado, 0]
+            'INSERT INTO tarefas (usuario_id, titulo, tag, prazo, aprovado, observacao) VALUES (?, ?, ?, ?, ?, ?)',
+            [usuario_id, titulo, tag || '', prazoFormatado, 0, observacao || null]
         );
         const tarefaId = result.insertId;
 
@@ -234,10 +234,10 @@ async function createTarefa(usuario_id, titulo, tag, subtarefas, responsaveis, p
 }
 
 // ============================================================
-//  UPDATE TAREFA
+//  UPDATE TAREFA - COM OBSERVAÇÃO
 // ============================================================
 
-async function updateTarefa(id, titulo, tag, subtarefas, responsaveis, prazo) {
+async function updateTarefa(id, titulo, tag, subtarefas, responsaveis, prazo, observacao) {
     try {
         let prazoFormatado = null;
         if (prazo) {
@@ -249,8 +249,8 @@ async function updateTarefa(id, titulo, tag, subtarefas, responsaveis, prazo) {
         }
 
         await db.query(
-            'UPDATE tarefas SET titulo = ?, tag = ?, prazo = ? WHERE id = ?',
-            [titulo, tag || '', prazoFormatado, id]
+            'UPDATE tarefas SET titulo = ?, tag = ?, prazo = ?, observacao = ? WHERE id = ?',
+            [titulo, tag || '', prazoFormatado, observacao || null, id]
         );
 
         await db.query('DELETE FROM subtarefas WHERE tarefa_id = ?', [id]);
@@ -277,13 +277,11 @@ async function updateTarefa(id, titulo, tag, subtarefas, responsaveis, prazo) {
 async function updateTarefaStatus(id, status) {
     try {
         if (status === 'done') {
-            // Se está indo para concluído, registra a data de finalização (apenas data)
             await db.query(
                 'UPDATE tarefas SET status = ?, data_finalizacao = CURDATE() WHERE id = ?',
                 [status, id]
             );
         } else {
-            // Se está voltando de concluído, remove a data de finalização
             await db.query(
                 'UPDATE tarefas SET status = ?, data_finalizacao = NULL WHERE id = ?',
                 [status, id]
@@ -598,10 +596,9 @@ app.delete('/api/admin/usuarios/:id', async (req, res) => {
 });
 
 // ============================================================
-//  ROTAS DE TAREFAS - COM APROVAÇÃO E DESAPROVAÇÃO
+//  ROTAS DE TAREFAS - COM OBSERVAÇÃO
 // ============================================================
 
-// Listar tarefas
 app.get('/api/tarefas', async (req, res) => {
     try {
         const tarefas = await getTarefas();
@@ -613,7 +610,6 @@ app.get('/api/tarefas', async (req, res) => {
     }
 });
 
-// Listar tarefas de assistência
 app.get('/api/tarefas/assistencia', async (req, res) => {
     try {
         const tarefas = await getTarefasAssistencia();
@@ -625,10 +621,9 @@ app.get('/api/tarefas/assistencia', async (req, res) => {
     }
 });
 
-// Criar tarefa
 app.post('/api/tarefas', async (req, res) => {
     try {
-        const { titulo, tag, subtarefas, responsaveis, prazo } = req.body;
+        const { titulo, tag, subtarefas, responsaveis, prazo, observacao } = req.body;
 
         if (!titulo) {
             return res.status(400).json({ erro: 'Título é obrigatório' });
@@ -639,7 +634,7 @@ app.post('/api/tarefas', async (req, res) => {
 
         console.log(`📝 Criando tarefa para usuário ${usuarioId}`);
 
-        const id = await createTarefa(usuarioId, titulo, tag, subtarefas, responsaveis, prazo);
+        const id = await createTarefa(usuarioId, titulo, tag, subtarefas, responsaveis, prazo, observacao);
         console.log(`✅ Tarefa criada: ${titulo} (ID: ${id})`);
         res.json({ id, mensagem: 'Tarefa criada com sucesso!' });
     } catch (error) {
@@ -648,10 +643,9 @@ app.post('/api/tarefas', async (req, res) => {
     }
 });
 
-// Criar tarefa de assistência
 app.post('/api/tarefas/assistencia', async (req, res) => {
     try {
-        const { titulo, tag, subtarefas, responsaveis, prazo } = req.body;
+        const { titulo, tag, subtarefas, responsaveis, prazo, observacao } = req.body;
 
         if (!titulo) {
             return res.status(400).json({ erro: 'Título é obrigatório' });
@@ -662,7 +656,7 @@ app.post('/api/tarefas/assistencia', async (req, res) => {
 
         console.log(`📝 Criando tarefa de assistência para usuário ${usuarioId}`);
 
-        const id = await createTarefa(usuarioId, titulo, 'assistencia', subtarefas, responsaveis, prazo);
+        const id = await createTarefa(usuarioId, titulo, 'assistencia', subtarefas, responsaveis, prazo, observacao);
         console.log(`✅ Tarefa de assistência criada: ${titulo} (ID: ${id})`);
         res.json({ id, mensagem: 'Tarefa criada com sucesso!' });
     } catch (error) {
@@ -671,13 +665,12 @@ app.post('/api/tarefas/assistencia', async (req, res) => {
     }
 });
 
-// Atualizar tarefa
 app.put('/api/tarefas/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const { titulo, tag, subtarefas, responsaveis, prazo } = req.body;
+        const { titulo, tag, subtarefas, responsaveis, prazo, observacao } = req.body;
 
-        await updateTarefa(id, titulo, tag, subtarefas, responsaveis, prazo);
+        await updateTarefa(id, titulo, tag, subtarefas, responsaveis, prazo, observacao);
         console.log(`✏️ Tarefa ${id} atualizada`);
         res.json({ mensagem: 'Tarefa atualizada com sucesso!' });
     } catch (error) {
@@ -686,7 +679,6 @@ app.put('/api/tarefas/:id', async (req, res) => {
     }
 });
 
-// Atualizar status da tarefa
 app.patch('/api/tarefas/:id/status', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
@@ -700,10 +692,6 @@ app.patch('/api/tarefas/:id/status', async (req, res) => {
     }
 });
 
-// ============================================================
-//  ROTA DE APROVAÇÃO DE TAREFA
-// ============================================================
-
 app.patch('/api/tarefas/:id/aprovar', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
@@ -715,10 +703,6 @@ app.patch('/api/tarefas/:id/aprovar', async (req, res) => {
     }
 });
 
-// ============================================================
-//  ROTA DE DESAPROVAÇÃO DE TAREFA (NOVO)
-// ============================================================
-
 app.patch('/api/tarefas/:id/desaprovar', async (req, res) => {
     try {
         const id = parseInt(req.params.id);
@@ -729,10 +713,6 @@ app.patch('/api/tarefas/:id/desaprovar', async (req, res) => {
         res.status(500).json({ erro: 'Erro ao desaprovar tarefa' });
     }
 });
-
-// ============================================================
-//  SUBTAREFAS
-// ============================================================
 
 app.patch('/api/subtarefas/:id', async (req, res) => {
     try {
@@ -747,7 +727,6 @@ app.patch('/api/subtarefas/:id', async (req, res) => {
     }
 });
 
-// Deletar tarefa
 app.delete('/api/tarefas/:id', async (req, res) => {
     try {
         const id = parseInt(req.params.id);

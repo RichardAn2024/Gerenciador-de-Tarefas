@@ -1,6 +1,5 @@
 /* ============================================================
-   script.js - Lógica completa do Dashboard 
-   (COM SELO DE APROVADO E DATA DE FINALIZAÇÃO)
+   script.js - Lógica completa do Dashboard (COM OBSERVAÇÃO)
    ============================================================ */
 
 // --- Estado ---
@@ -25,11 +24,8 @@ const logoutBtn = document.getElementById('logoutBtn');
 const userName = document.getElementById('userName');
 const adminLink = document.getElementById('adminLink');
 
-// --- Pesquisa ---
 const searchInput = document.getElementById('searchInput');
 const clearSearchBtn = document.getElementById('clearSearchBtn');
-
-// --- Ordenação ---
 const sortBy = document.getElementById('sortBy');
 
 // --- Modal de Criação ---
@@ -38,6 +34,7 @@ const createTitle = document.getElementById('createTitle');
 const createTag = document.getElementById('createTag');
 const createResponsaveis = document.getElementById('createResponsaveis');
 const createPrazo = document.getElementById('createPrazo');
+const createObservacao = document.getElementById('createObservacao');
 const subtaskList = document.getElementById('subtaskList');
 const addSubtaskBtn = document.getElementById('addSubtaskBtn');
 const saveCreateBtn = document.getElementById('saveCreateBtn');
@@ -50,13 +47,13 @@ const editTitle = document.getElementById('editTitle');
 const editTag = document.getElementById('editTag');
 const editResponsaveis = document.getElementById('editResponsaveis');
 const editPrazo = document.getElementById('editPrazo');
+const editObservacao = document.getElementById('editObservacao');
 const editSubtaskList = document.getElementById('editSubtaskList');
 const addEditSubtaskBtn = document.getElementById('addEditSubtaskBtn');
 const saveEditBtn = document.getElementById('saveEditBtn');
 const cancelEditBtn = document.getElementById('cancelEditBtn');
 const closeModalBtn = document.getElementById('closeModalBtn');
 
-// --- Filtro Responsável ---
 const filterResponsavel = document.getElementById('filterResponsavel');
 
 // --- Modal de Confirmação ---
@@ -86,9 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     usuarioLogado = getUsuario();
     if (usuarioLogado) {
         userName.textContent = `👤 ${usuarioLogado.nome}`;
-        if (usuarioLogado.isAdmin) {
-            adminLink.style.display = 'inline-flex';
-        }
+        if (usuarioLogado.isAdmin) adminLink.style.display = 'inline-flex';
     }
 
     await carregarUsuarios();
@@ -113,9 +108,7 @@ async function carregarUsuarios() {
 
 function popularSelectResponsaveis(select) {
     if (!select) return;
-    while (select.options.length > 1) {
-        select.remove(1);
-    }
+    while (select.options.length > 1) select.remove(1);
 
     if (usuarioLogado) {
         const optionEu = document.createElement('option');
@@ -137,10 +130,7 @@ function popularSelectResponsaveis(select) {
 
 function popularFilterResponsavel() {
     if (!filterResponsavel) return;
-
-    while (filterResponsavel.options.length > 1) {
-        filterResponsavel.remove(1);
-    }
+    while (filterResponsavel.options.length > 1) filterResponsavel.remove(1);
 
     if (usuarioLogado) {
         const optionEu = document.createElement('option');
@@ -179,9 +169,7 @@ async function carregarTarefasDoServidor() {
 // ============================================================
 
 function sortTasks(tasks) {
-    if (currentSort === 'nenhum') {
-        return tasks;
-    }
+    if (currentSort === 'nenhum') return tasks;
 
     const sortFunctions = {
         'criacao_asc': (a, b) => new Date(a.data_criacao) - new Date(b.data_criacao),
@@ -220,18 +208,12 @@ function sortTasks(tasks) {
 
 function updateColumnHeadersVisibility() {
     const hasStatusFilter = currentFilter !== 'all';
-
     document.querySelectorAll('.column').forEach(column => {
         const columnStatus = column.dataset.status;
         const header = column.querySelector('.column-header');
-
         if (!header) return;
 
-        if (hasStatusFilter) {
-            header.style.display = (columnStatus === currentFilter) ? 'flex' : 'none';
-        } else {
-            header.style.display = 'flex';
-        }
+        header.style.display = (hasStatusFilter && columnStatus !== currentFilter) ? 'none' : 'flex';
     });
 }
 
@@ -242,31 +224,22 @@ function updateColumnHeadersVisibility() {
 function render() {
     let filtered = tarefas;
 
-    if (currentFilter !== 'all') {
-        filtered = filtered.filter(t => t.status === currentFilter);
-    }
+    if (currentFilter !== 'all') filtered = filtered.filter(t => t.status === currentFilter);
 
     if (currentResponsavelFilter !== 'all') {
-        filtered = filtered.filter(t => {
-            const responsaveis = t.responsaveis_ids || [];
-            return responsaveis.includes(parseInt(currentResponsavelFilter));
-        });
+        filtered = filtered.filter(t => (t.responsaveis_ids || []).includes(parseInt(currentResponsavelFilter)));
     }
 
     if (currentSearchTerm.trim() !== '') {
         const term = currentSearchTerm.toLowerCase().trim();
-        filtered = filtered.filter(t =>
-            t.titulo.toLowerCase().includes(term)
-        );
+        filtered = filtered.filter(t => t.titulo.toLowerCase().includes(term));
     }
 
     filtered = sortTasks(filtered);
-
     const paginatedTasks = getPaginatedTasks(filtered);
 
     for (const status of ['todo', 'doing', 'approval', 'done']) {
-        const list = document.getElementById(statusMap[status].listId);
-        list.innerHTML = '';
+        document.getElementById(statusMap[status].listId).innerHTML = '';
     }
 
     const hasStatusFilter = currentFilter !== 'all';
@@ -277,9 +250,7 @@ function render() {
 
         columns.forEach((status, index) => {
             const list = document.getElementById(statusMap[status].listId);
-            const start = index * tasksPerCol;
-            const end = Math.min(start + tasksPerCol, filtered.length);
-            const tasksForColumn = filtered.slice(start, end);
+            const tasksForColumn = filtered.slice(index * tasksPerCol, Math.min((index + 1) * tasksPerCol, filtered.length));
 
             if (tasksForColumn.length === 0) {
                 const empty = document.createElement('div');
@@ -288,11 +259,7 @@ function render() {
                 list.appendChild(empty);
                 return;
             }
-
-            tasksForColumn.forEach(task => {
-                const card = createTaskCard(task);
-                list.appendChild(card);
-            });
+            tasksForColumn.forEach(task => list.appendChild(createTaskCard(task)));
         });
     } else {
         for (const status of ['todo', 'doing', 'approval', 'done']) {
@@ -306,11 +273,7 @@ function render() {
                 list.appendChild(empty);
                 continue;
             }
-
-            tasksInStatus.forEach(task => {
-                const card = createTaskCard(task);
-                list.appendChild(card);
-            });
+            tasksInStatus.forEach(task => list.appendChild(createTaskCard(task)));
         }
     }
 
@@ -333,15 +296,11 @@ function getPaginatedTasks(filteredTasks) {
     };
 
     const maxTasksPerColumn = Math.max(
-        tasksByStatus.todo.length,
-        tasksByStatus.doing.length,
-        tasksByStatus.approval.length,
-        tasksByStatus.done.length
+        tasksByStatus.todo.length, tasksByStatus.doing.length,
+        tasksByStatus.approval.length, tasksByStatus.done.length
     );
 
-    totalPages = Math.ceil(maxTasksPerColumn / tasksPerColumn);
-    if (totalPages === 0) totalPages = 1;
-
+    totalPages = Math.ceil(maxTasksPerColumn / tasksPerColumn) || 1;
     if (currentPage > totalPages) currentPage = totalPages;
     if (currentPage < 1) currentPage = 1;
 
@@ -350,11 +309,8 @@ function getPaginatedTasks(filteredTasks) {
 
     const result = [];
     for (const status of ['todo', 'doing', 'approval', 'done']) {
-        const tasks = tasksByStatus[status] || [];
-        const pageTasks = tasks.slice(startIndex, endIndex);
-        result.push(...pageTasks);
+        result.push(...(tasksByStatus[status] || []).slice(startIndex, endIndex));
     }
-
     return result;
 }
 
@@ -383,7 +339,6 @@ function renderPagination(totalTasks) {
             let endPage = Math.min(totalPages, currentPage + 3);
             if (currentPage <= 3) endPage = Math.min(totalPages, 7);
             if (currentPage >= totalPages - 2) startPage = Math.max(1, totalPages - 6);
-
             addPageNumbersToContainer(c.pageNumbers, startPage, endPage);
         }
     });
@@ -391,7 +346,6 @@ function renderPagination(totalTasks) {
 
 function addPageNumbersToContainer(container, startPage, endPage) {
     if (!container) return;
-
     if (startPage > 1) {
         addPageNumberToContainer(container, 1);
         if (startPage > 2) {
@@ -401,11 +355,7 @@ function addPageNumbersToContainer(container, startPage, endPage) {
             container.appendChild(dots);
         }
     }
-
-    for (let i = startPage; i <= endPage; i++) {
-        addPageNumberToContainer(container, i);
-    }
-
+    for (let i = startPage; i <= endPage; i++) addPageNumberToContainer(container, i);
     if (endPage < totalPages) {
         if (endPage < totalPages - 1) {
             const dots = document.createElement('span');
@@ -421,15 +371,12 @@ function addPageNumberToContainer(container, page) {
     const btn = document.createElement('button');
     btn.className = `page-number-btn${page === currentPage ? ' active' : ''}`;
     btn.textContent = page;
-    btn.addEventListener('click', () => {
-        currentPage = page;
-        render();
-    });
+    btn.addEventListener('click', () => { currentPage = page; render(); });
     container.appendChild(btn);
 }
 
 // ============================================================
-//  CRIAÇÃO DO CARD
+//  CRIAÇÃO DO CARD (COM OBSERVAÇÃO)
 // ============================================================
 
 function createTaskCard(task) {
@@ -450,7 +397,6 @@ function createTaskCard(task) {
         card.style.borderLeftWidth = '6px';
     }
 
-    // Título e Selo de Aprovado
     const title = document.createElement('div');
     title.className = 'task-title';
     title.textContent = task.titulo;
@@ -462,12 +408,9 @@ function createTaskCard(task) {
         title.appendChild(stamp);
     }
 
-    if (isOverdue) {
-        title.innerHTML += ' <span style="color:#ff4d4f;font-size:12px;">🔴 ATRASADA</span>';
-    }
+    if (isOverdue) title.innerHTML += ' <span style="color:#ff4d4f;font-size:12px;">🔴 ATRASADA</span>';
     card.appendChild(title);
 
-    // Criador
     if (task.criador_nome) {
         const criadorEl = document.createElement('div');
         criadorEl.className = 'task-criador';
@@ -487,7 +430,6 @@ function createTaskCard(task) {
         card.appendChild(criadorEl);
     }
 
-    // Responsáveis
     if (task.responsaveis_nomes && task.responsaveis_nomes.length > 0) {
         const responsavelEl = document.createElement('div');
         responsavelEl.className = 'task-responsavel';
@@ -505,13 +447,11 @@ function createTaskCard(task) {
         card.appendChild(responsavelEl);
     }
 
-    // Data de Criação
     const dateEl = document.createElement('div');
     dateEl.className = 'task-date';
     dateEl.innerHTML = `📅 Criado: ${formatarData(task.data_criacao)}`;
     card.appendChild(dateEl);
 
-    // Prazo
     if (task.prazo) {
         const prazoEl = document.createElement('div');
         prazoEl.className = 'task-date task-prazo';
@@ -529,30 +469,30 @@ function createTaskCard(task) {
         card.appendChild(prazoEl);
     }
 
-    // Data de Finalização (NOVO)
+    // --- EXIBIR OBSERVAÇÃO ---
+    if (task.observacao) {
+        const obsEl = document.createElement('div');
+        obsEl.className = 'task-observacao';
+        obsEl.innerHTML = `📝 <strong>Obs:</strong> ${task.observacao}`;
+        obsEl.style.cssText = 'font-size: 12px; color: #555; background: #f9f9f9; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; white-space: pre-wrap; border-left: 2px solid #F57C00;';
+        card.appendChild(obsEl);
+    }
+
     if (task.status === 'done' && task.data_finalizacao) {
         const finalizadoEl = document.createElement('div');
         finalizadoEl.className = 'task-date task-finalizado';
         finalizadoEl.innerHTML = `✅ Finalizado em: ${formatarData(task.data_finalizacao)}`;
-        finalizadoEl.style.color = '#2e7d32';
-        finalizadoEl.style.fontWeight = 'bold';
-        finalizadoEl.style.background = '#e8f5e9';
-        finalizadoEl.style.padding = '2px 8px';
-        finalizadoEl.style.borderRadius = '4px';
-        finalizadoEl.style.display = 'inline-block';
-        finalizadoEl.style.marginBottom = '4px';
+        finalizadoEl.style.cssText = 'color: #2e7d32; font-weight: bold; background: #e8f5e9; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px;';
         card.appendChild(finalizadoEl);
     }
 
-    // Subtarefas
     const subtasksEl = document.createElement('div');
     subtasksEl.className = 'task-subtasks';
     if (task.subtarefas && task.subtarefas.length > 0) {
         const doneCount = task.subtarefas.filter(s => s.concluida).length;
-        const totalCount = task.subtarefas.length;
         const countInfo = document.createElement('div');
         countInfo.style.cssText = 'font-size: 11px; color: #8c929a; margin-bottom: 4px;';
-        countInfo.textContent = `📋 ${doneCount}/${totalCount} concluídas`;
+        countInfo.textContent = `📋 ${doneCount}/${task.subtarefas.length} concluídas`;
         subtasksEl.appendChild(countInfo);
 
         task.subtarefas.forEach(subtask => {
@@ -569,12 +509,9 @@ function createTaskCard(task) {
             item.appendChild(text);
             subtasksEl.appendChild(item);
         });
-    }
-    if (task.subtarefas && task.subtarefas.length > 0) {
         card.appendChild(subtasksEl);
     }
 
-    // Meta (Tags e Ações)
     const meta = document.createElement('div');
     meta.className = 'task-meta';
 
@@ -595,17 +532,14 @@ function createTaskCard(task) {
     const editBtn = document.createElement('button');
     editBtn.innerHTML = '✏️';
     editBtn.className = 'edit-btn';
-    editBtn.title = 'Editar';
     editBtn.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(task.id); });
 
     const backBtn = document.createElement('button');
     backBtn.innerHTML = '⬅️';
-    backBtn.title = 'Voltar status';
     backBtn.addEventListener('click', (e) => { e.stopPropagation(); moveTask(task.id, -1); });
 
     const forwardBtn = document.createElement('button');
     forwardBtn.innerHTML = '➡️';
-    forwardBtn.title = 'Avançar status';
     forwardBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (task.status === 'approval' && task.aprovado === 0) {
@@ -618,7 +552,6 @@ function createTaskCard(task) {
     if (task.status === 'approval' && task.aprovado === 0) {
         const approveBtn = document.createElement('button');
         approveBtn.innerHTML = '✅';
-        approveBtn.title = 'Aprovar';
         approveBtn.className = 'approve-btn';
         approveBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
@@ -636,7 +569,6 @@ function createTaskCard(task) {
     const deleteBtn = document.createElement('button');
     deleteBtn.innerHTML = '🗑️';
     deleteBtn.className = 'delete-btn';
-    deleteBtn.title = 'Excluir';
     deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); confirmarExclusao(task.id); });
 
     actions.appendChild(editBtn);
@@ -672,11 +604,7 @@ function handleDragEnd(e) {
 }
 
 document.querySelectorAll('.column').forEach(column => {
-    column.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        column.classList.add('drag-over');
-    });
+    column.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; column.classList.add('drag-over'); });
     column.addEventListener('dragleave', () => column.classList.remove('drag-over'));
     column.addEventListener('drop', async (e) => {
         e.preventDefault();
@@ -687,7 +615,7 @@ document.querySelectorAll('.column').forEach(column => {
 });
 
 // ============================================================
-//  FUNÇÕES DE MANIPULAÇÃO
+//  MANIPULAÇÃO
 // ============================================================
 
 async function moveTask(id, direction, targetStatus = null) {
@@ -713,13 +641,10 @@ async function moveTask(id, direction, targetStatus = null) {
             await desaprovarTarefa(id);
             task.aprovado = 0;
         }
-
         await atualizarStatusTarefa(id, newStatus);
         task.status = newStatus;
         render();
-    } catch (error) {
-        alert(error.message);
-    }
+    } catch (error) { alert(error.message); }
 }
 
 async function verificarEAtualizarStatusTarefa(taskId) {
@@ -760,7 +685,7 @@ async function toggleSubtask(taskId, subtaskId) {
 }
 
 // ============================================================
-//  MODAIS E EVENTOS
+//  MODAIS E FUNÇÕES AUXILIARES
 // ============================================================
 
 function openCreateModal() {
@@ -768,14 +693,13 @@ function openCreateModal() {
     createTag.value = '';
     Array.from(createResponsaveis.options).forEach(opt => opt.selected = false);
     createPrazo.value = '';
+    createObservacao.value = '';
     subtaskList.innerHTML = '';
     createModal.classList.add('active');
     createTitle.focus();
 }
 
-function closeCreateModal() {
-    createModal.classList.remove('active');
-}
+function closeCreateModal() { createModal.classList.remove('active'); }
 
 function addSubtaskInput(container) {
     const row = document.createElement('div');
@@ -847,10 +771,11 @@ async function createTask() {
     const tag = createTag.value;
     const responsaveis = Array.from(createResponsaveis.selectedOptions).map(opt => parseInt(opt.value)).filter(id => !isNaN(id) && id > 0);
     const prazo = createPrazo.value || null;
+    const observacao = createObservacao.value.trim() || null;
     const subtarefas = getSubtasksFromContainer(subtaskList);
 
     try {
-        await criarTarefa(titulo, tag, subtarefas, responsaveis, prazo);
+        await criarTarefa(titulo, tag, subtarefas, responsaveis, prazo, observacao);
         await carregarTarefasDoServidor();
         closeCreateModal();
         render();
@@ -865,15 +790,13 @@ function openEditModal(taskId) {
     editTag.value = task.tag || '';
     Array.from(editResponsaveis.options).forEach(opt => opt.selected = (task.responsaveis_ids || []).includes(parseInt(opt.value)));
     editPrazo.value = task.prazo || '';
+    editObservacao.value = task.observacao || '';
     loadSubtasksIntoContainer(editSubtaskList, task.subtarefas || []);
     editModal.classList.add('active');
     editTitle.focus();
 }
 
-function closeEditModal() {
-    editModal.classList.remove('active');
-    editingTaskId = null;
-}
+function closeEditModal() { editModal.classList.remove('active'); editingTaskId = null; }
 
 async function salvarEdicaoComVerificacao() {
     if (editingTaskId === null) return;
@@ -882,10 +805,11 @@ async function salvarEdicaoComVerificacao() {
     const tag = editTag.value;
     const responsaveis = Array.from(editResponsaveis.selectedOptions).map(opt => parseInt(opt.value)).filter(id => !isNaN(id) && id > 0);
     const prazo = editPrazo.value || null;
+    const observacao = editObservacao.value.trim() || null;
     const subtarefas = getEditSubtasks();
 
     try {
-        await atualizarTarefa(editingTaskId, titulo, tag, subtarefas, responsaveis, prazo);
+        await atualizarTarefa(editingTaskId, titulo, tag, subtarefas, responsaveis, prazo, observacao);
         await carregarTarefasDoServidor();
         const task = tarefas.find(t => t.id === editingTaskId);
         if (task && task.subtarefas && task.subtarefas.length > 0) await verificarEAtualizarStatusTarefa(editingTaskId);
@@ -914,10 +838,7 @@ async function executarExclusao() {
     } catch (error) { alert(error.message); }
 }
 
-function closeConfirmModal() {
-    confirmModal.classList.remove('active');
-    pendingDeleteId = null;
-}
+function closeConfirmModal() { confirmModal.classList.remove('active'); pendingDeleteId = null; }
 
 async function clearAllTasks() {
     if (tarefas.length === 0) return;
