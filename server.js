@@ -277,10 +277,15 @@ async function updateTarefa(id, titulo, tag, subtarefas, responsaveis, prazo, ob
 async function updateTarefaStatus(id, status) {
     try {
         if (status === 'done') {
-            // Pega a data atual no fuso horário do Brasil (UTC-3) de forma segura
-            const hoje = new Date();
-            const dataBrasil = new Date(hoje.getTime() - (3 * 60 * 60 * 1000));
-            const dataFormatada = dataBrasil.toISOString().split('T')[0];
+            // Força o fuso horário do Brasil (UTC-3)
+            const agora = new Date();
+            const dataBrasil = new Date(agora.getTime() - (3 * 60 * 60 * 1000));
+
+            // Pega o ano, mês e dia separadamente
+            const ano = dataBrasil.getFullYear();
+            const mes = String(dataBrasil.getMonth() + 1).padStart(2, '0');
+            const dia = String(dataBrasil.getDate()).padStart(2, '0');
+            const dataFormatada = `${ano}-${mes}-${dia}`;
 
             await db.query(
                 'UPDATE tarefas SET status = ?, data_finalizacao = ? WHERE id = ?',
