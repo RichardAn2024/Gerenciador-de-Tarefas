@@ -277,9 +277,16 @@ async function updateTarefa(id, titulo, tag, subtarefas, responsaveis, prazo, ob
 async function updateTarefaStatus(id, status) {
     try {
         if (status === 'done') {
+            // Pega a data atual no fuso horário do Brasil (Node.js)
+            const hoje = new Date();
+            // Ajusta para o fuso do Brasil (UTC-3)
+            hoje.setHours(hoje.getHours() - 3);
+            // Formata para YYYY-MM-DD
+            const dataFormatada = hoje.toISOString().split('T')[0];
+
             await db.query(
-                'UPDATE tarefas SET status = ?, data_finalizacao = CURDATE() WHERE id = ?',
-                [status, id]
+                'UPDATE tarefas SET status = ?, data_finalizacao = ? WHERE id = ?',
+                [status, dataFormatada, id]
             );
         } else {
             await db.query(
