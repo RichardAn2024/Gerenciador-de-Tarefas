@@ -1,5 +1,6 @@
 /* ============================================================
-   script.js - Lógica completa do Dashboard (COM OBSERVAÇÃO)
+   script.js - Lógica completa do Dashboard 
+   (COM OBSERVAÇÃO, APROVAÇÃO E DATA DE FINALIZAÇÃO)
    ============================================================ */
 
 // --- Estado ---
@@ -376,7 +377,7 @@ function addPageNumberToContainer(container, page) {
 }
 
 // ============================================================
-//  CRIAÇÃO DO CARD (COM OBSERVAÇÃO)
+//  CRIAÇÃO DO CARD (COM DATA DE FINALIZAÇÃO)
 // ============================================================
 
 function createTaskCard(task) {
@@ -469,6 +470,15 @@ function createTaskCard(task) {
         card.appendChild(prazoEl);
     }
 
+    // --- EXIBIR DATA DE FINALIZAÇÃO ---
+    if (task.status === 'done' && task.data_finalizacao) {
+        const finalizadoEl = document.createElement('div');
+        finalizadoEl.className = 'task-date task-finalizado';
+        finalizadoEl.innerHTML = `✅ Finalizado em: ${formatarData(task.data_finalizacao)}`;
+        finalizadoEl.style.cssText = 'color: #2e7d32; font-weight: bold; background: #e8f5e9; padding: 4px 10px; border-radius: 4px; display: inline-block; margin-bottom: 6px; font-size: 12px;';
+        card.appendChild(finalizadoEl);
+    }
+
     // --- EXIBIR OBSERVAÇÃO ---
     if (task.observacao) {
         const obsEl = document.createElement('div');
@@ -476,14 +486,6 @@ function createTaskCard(task) {
         obsEl.innerHTML = `📝 <strong>Obs:</strong> ${task.observacao}`;
         obsEl.style.cssText = 'font-size: 12px; color: #555; background: #f9f9f9; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; white-space: pre-wrap; border-left: 2px solid #F57C00;';
         card.appendChild(obsEl);
-    }
-
-    if (task.status === 'done' && task.data_finalizacao) {
-        const finalizadoEl = document.createElement('div');
-        finalizadoEl.className = 'task-date task-finalizado';
-        finalizadoEl.innerHTML = `✅ Finalizado em: ${formatarData(task.data_finalizacao)}`;
-        finalizadoEl.style.cssText = 'color: #2e7d32; font-weight: bold; background: #e8f5e9; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px;';
-        card.appendChild(finalizadoEl);
     }
 
     const subtasksEl = document.createElement('div');
