@@ -203,7 +203,7 @@ function sortTasks(tasks) {
             return (order[b.status] || 0) - (order[a.status] || 0);
         }
     };
-
+    
     const sortFn = sortFunctions[currentSort] || sortFunctions['criacao_desc'];
     return [...tasks].sort(sortFn);
 }
@@ -214,13 +214,13 @@ function sortTasks(tasks) {
 
 function updateColumnHeadersVisibility() {
     const hasStatusFilter = currentFilter !== 'all';
-
+    
     document.querySelectorAll('.column').forEach(column => {
         const columnStatus = column.dataset.status;
         const header = column.querySelector('.column-header');
-
+        
         if (!header) return;
-
+        
         if (hasStatusFilter) {
             header.style.display = (columnStatus === currentFilter) ? 'flex' : 'none';
         } else {
@@ -249,7 +249,7 @@ function render() {
 
     if (currentSearchTerm.trim() !== '') {
         const term = currentSearchTerm.toLowerCase().trim();
-        filtered = filtered.filter(t =>
+        filtered = filtered.filter(t => 
             t.titulo.toLowerCase().includes(term)
         );
     }
@@ -267,7 +267,7 @@ function render() {
     if (hasStatusFilter && filtered.length > 0) {
         const columns = ['todo', 'doing', 'approval', 'done'];
         const tasksPerCol = Math.ceil(filtered.length / columns.length);
-
+        
         columns.forEach((status, index) => {
             const list = document.getElementById(statusMap[status].listId);
             const tasksForColumn = filtered.slice(index * tasksPerCol, Math.min((index + 1) * tasksPerCol, filtered.length));
@@ -322,29 +322,29 @@ function getPaginatedTasks(filteredTasks) {
         approval: filteredTasks.filter(t => t.status === 'approval'),
         done: filteredTasks.filter(t => t.status === 'done')
     };
-
+    
     const maxTasksPerColumn = Math.max(
         tasksByStatus.todo.length,
         tasksByStatus.doing.length,
         tasksByStatus.approval.length,
         tasksByStatus.done.length
     );
-
+    
     totalPages = Math.ceil(maxTasksPerColumn / tasksPerColumn);
     if (totalPages === 0) totalPages = 1;
-
+    
     if (currentPage > totalPages) currentPage = totalPages;
     if (currentPage < 1) currentPage = 1;
-
+    
     const startIndex = (currentPage - 1) * tasksPerColumn;
     const endIndex = startIndex + tasksPerColumn;
-
+    
     const result = [];
     for (const status of ['todo', 'doing', 'approval', 'done']) {
         const tasks = tasksByStatus[status] || [];
         result.push(...tasks.slice(startIndex, endIndex));
     }
-
+    
     return result;
 }
 
@@ -366,7 +366,7 @@ function renderPagination(totalTasks) {
         c.info.textContent = `Página ${currentPage} de ${totalPages}`;
         if (c.prevBtn) c.prevBtn.disabled = currentPage <= 1;
         if (c.nextBtn) c.nextBtn.disabled = currentPage >= totalPages;
-
+        
         if (c.pageNumbers) {
             c.pageNumbers.innerHTML = '';
             let startPage = Math.max(1, currentPage - 3);
@@ -434,14 +434,14 @@ function createTaskCard(task) {
     const title = document.createElement('div');
     title.className = 'task-title';
     title.textContent = task.titulo;
-
+    
     if (task.aprovado === 1) {
         const stamp = document.createElement('span');
         stamp.className = 'stamp-approved';
         stamp.textContent = '✅ APROVADO';
         title.appendChild(stamp);
     }
-
+    
     if (isOverdue) title.innerHTML += ' <span style="color:#ff4d4f;font-size:12px;">🔴 ATRASADA</span>';
     card.appendChild(title);
 
