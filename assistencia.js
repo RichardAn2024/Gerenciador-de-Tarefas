@@ -1,6 +1,6 @@
 /* ============================================================
    assistencia.js - Lógica da página de Assistência Técnica
-   (COM DATA DE FINALIZAÇÃO, OBSERVAÇÃO E APROVAÇÃO)
+   (COM ATUALIZAÇÃO INSTANTÂNEA DA DATA DE FINALIZAÇÃO)
    ============================================================ */
 
 // --- Estado ---
@@ -698,7 +698,10 @@ async function moveTask(id, direction, targetStatus = null) {
         }
         await atualizarStatusTarefa(id, newStatus);
         task.status = newStatus;
-        render();
+
+        // --- MÁGICA: Recarrega os dados do servidor na hora ---
+        await carregarTarefasDoServidor();
+
     } catch (error) { alert(error.message); }
 }
 
@@ -719,7 +722,8 @@ async function verificarEAtualizarStatusTarefa(taskId) {
         try {
             await atualizarStatusTarefa(taskId, novoStatus);
             task.status = novoStatus;
-            render();
+            // Recarrega para pegar a data de finalização
+            await carregarTarefasDoServidor();
         } catch (error) { console.error('Erro ao atualizar status:', error); }
     }
 }
@@ -925,7 +929,6 @@ function updateStats() {
     const hoje = new Date();
     const overdue = tarefas.filter(t => t.prazo && t.status !== 'done' && new Date(t.prazo) < hoje).length;
 
-    // AQUI ESTÃO AS VARIÁVEIS CORRETAS DA ASSISTÊNCIA
     document.getElementById('totalTasksAssist').textContent = total;
     document.getElementById('completedTasksAssist').textContent = done;
     document.getElementById('pendingTasksAssist').textContent = pending;
