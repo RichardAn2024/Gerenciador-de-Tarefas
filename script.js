@@ -1,6 +1,5 @@
 /* ============================================================
    script.js - Lógica completa do Dashboard 
-   (COM OBSERVAÇÃO, APROVAÇÃO E DATA DE FINALIZAÇÃO)
    ============================================================ */
 
 // --- Estado ---
@@ -270,7 +269,7 @@ function render() {
             if (tasksInStatus.length === 0) {
                 const empty = document.createElement('div');
                 empty.className = 'empty-state';
-                empty.textContent = currentSearchTerm.trim() !== '' ? `Nenhuma tarefa encontrada para "${currentSearchTerm}"` : 'Nenhuma tarefa aqui';
+                empty.textContent = currentSearchTerm.trim() !== '' ? `Nenhuma tarefa encontrada` : 'Nenhuma tarefa aqui';
                 list.appendChild(empty);
                 continue;
             }
@@ -474,7 +473,14 @@ function createTaskCard(task) {
     if (task.status === 'done' && task.data_finalizacao) {
         const finalizadoEl = document.createElement('div');
         finalizadoEl.className = 'task-date task-finalizado';
-        finalizadoEl.innerHTML = `✅ Finalizado em: ${formatarData(task.data_finalizacao)}`;
+
+        let dataFormatada = task.data_finalizacao;
+        if (dataFormatada.includes('-')) {
+            const p = dataFormatada.split('T')[0].split('-');
+            dataFormatada = `${p[2]}/${p[1]}/${p[0]}`;
+        }
+
+        finalizadoEl.innerHTML = `✅ Finalizado em: ${dataFormatada}`;
         finalizadoEl.style.cssText = 'color: #2e7d32; font-weight: bold; background: #e8f5e9; padding: 4px 10px; border-radius: 4px; display: inline-block; margin-bottom: 6px; font-size: 12px;';
         card.appendChild(finalizadoEl);
     }
