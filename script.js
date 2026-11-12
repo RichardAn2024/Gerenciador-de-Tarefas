@@ -1,6 +1,6 @@
 /* ============================================================
    script.js - Lógica completa do Dashboard 
-   (COM TRAVA DE ROLAGEM NO MODAL E ATUALIZAÇÃO INSTANTÂNEA)
+   (COM NOTIFICAÇÕES, TRAVA DE ROLAGEM E ATUALIZAÇÃO INSTANTÂNEA)
    ============================================================ */
 
 // --- Estado ---
@@ -65,6 +65,16 @@ const confirmActionBtn = document.getElementById('confirmActionBtn');
 const cancelConfirmBtn = document.getElementById('cancelConfirmBtn');
 const closeConfirmBtn = document.getElementById('closeConfirmBtn');
 
+// --- Notificações ---
+const notificationBtn = document.getElementById('notificationBtn');
+const notificationBadge = document.getElementById('notificationBadge');
+const notificationModal = document.getElementById('notificationModal');
+const closeNotificationModalBtn = document.getElementById('closeNotificationModalBtn');
+const notificationList = document.getElementById('notificationList');
+const markAsReadBtn = document.getElementById('markAsReadBtn');
+
+let notificacoesGlobais = [];
+
 // --- Status ---
 const statusMap = {
     todo: { listId: 'list-todo', countId: 'count-todo', label: 'A Fazer' },
@@ -90,6 +100,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     await carregarUsuarios();
     await carregarTarefasDoServidor();
     configurarEventos();
+
+    // Verifica notificações após 1 segundo para garantir que o usuário está carregado
+    setTimeout(() => {
+        if (usuarioLogado) verificarNotificacoes();
+    }, 1000);
 });
 
 // ============================================================
@@ -937,6 +952,80 @@ if (filterResponsavel) {
     });
 }
 
+// ============================================================
+//  LÓGICA DE NOTIFICAÇÕES
+// ============================================================
+
+async function verificarNotificacoes() {
+    if (!usuarioLogado) return;
+
+    try {
+        const response = await apiRequest('/notificacoes');
+        notificacoesGlobais = await response.json();
+
+        // Pega a data da última leitura do localStorage (separado por ID de usuário)
+        const lastReadKey = `lastRead_${usuarioLogado.id}`;
+        const lastRead = localStorage.getItem(lastReadKey);
+
+        let unreadCount = 0;
+        if (!lastRead) {
+            unreadCount = notificacoesGlobais.length;
+        } else {
+            unreadCount = notificacoesGlobais.filter(n => new Date(n.data) > new Date(lastRead)).length;
+        }
+
+        if (unreadCount > 0) {
+            notificationBadge.textContent = unreadCount;
+            notificationBadge.style.display = 'block';
+        } else {
+            notificationBadge.style.display = 'none';
+        }
+
+        renderNotificacoes(lastRead);
+
+    } catch (error) {
+        console.error('Erro ao buscar notificações:', error);
+    }
+}
+
+function renderNotificacoes(lastRead) {
+    if (!notificationList) return;
+    notificationList.innerHTML = '';
+
+    if (notificacoesGlobais.length === 0) {
+        notificationList.innerHTML = '<p style="text-align:center; color:#8c929a; padding: 20px;">Nenhuma notificação por aqui.</p>';
+        return;
+    }
+
+    notificacoesGlobais.forEach(n => {
+        const isUnread = !lastRead || new Date(n.data) > new Date(lastRead);
+        const item = document.createElement('div');
+        item.className = `notification-item ${isUnread ? 'notification-unread' : ''}`;
+
+        const dataFormatada = formatarDataHora(n.data);
+
+        item.innerHTML = `
+            <div class="notification-icon ${n.tipo === 'update' ? 'update' : ''}">${n.icon}</div>
+            <div class="notification-content">
+                <div class="notification-title">${n.titulo}</div>
+                <div class="notification-message">${n.mensagem}</div>
+                <div class="notification-date">${dataFormatada}</div>
+            </div>
+        `;
+        notificationList.appendChild(item);
+    });
+}
+
+function formatarDataHora(dataStr) {
+    if (!dataStr) return '';
+    const d = new Date(dataStr);
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} às ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+// ============================================================
+//  CONFIGURAR EVENTOS
+// ============================================================
+
 function configurarEventos() {
     openCreateBtn.addEventListener('click', openCreateModal);
     saveCreateBtn.addEventListener('click', createTask);
@@ -978,11 +1067,51 @@ function configurarEventos() {
         if (btn) btn.addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; render(); } });
     });
 
+    // Eventos de Notificação
+    if (notificationBtn) {
+        notificationBtn.addEventListener('click', () => {
+            notificationModal.classList.add('active');
+            document.body.classList.add('modal-open');
+            verificarNotificacoes();
+        });
+    }
+
+    if (closeNotificationModalBtn) {
+        closeNotificationModalBtn.addEventListener('click', () => {
+            notificationModal.classList.remove('active');
+            document.body.classList.remove('modal-open');
+        });
+    }
+
+    if (notificationModal) {
+        notificationModal.addEventListener('click', (e) => {
+            if (e.target === notificationModal) {
+                notificationModal.classList.remove('active');
+                document.body.classList.remove('modal-open');
+            }
+        });
+    }
+
+    if (markAsReadBtn) {
+        markAsReadBtn.addEventListener('click', () => {
+            const now = new Date().toISOString();
+            localStorage.setItem(`lastRead_${usuarioLogado.id}`, now);
+            notificationBadge.style.display = 'none';
+            renderNotificacoes(now);
+            notificationModal.classList.remove('active');
+            document.body.classList.remove('modal-open');
+        });
+    }
+
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if (createModal.classList.contains('active')) closeCreateModal();
             if (editModal.classList.contains('active')) closeEditModal();
             if (confirmModal.classList.contains('active')) closeConfirmModal();
+            if (notificationModal.classList.contains('active')) {
+                notificationModal.classList.remove('active');
+                document.body.classList.remove('modal-open');
+            }
         }
     });
 }

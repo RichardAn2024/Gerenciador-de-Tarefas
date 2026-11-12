@@ -44,6 +44,15 @@
                 <div class="user-info">
                     <span id="userName">Usuário</span>
                     <a href="assistencia.html" class="btn btn-outline btn-sm">🔧 Assistência</a>
+
+                    <!-- NOVO BOTÃO DO SINO -->
+                    <button class="btn btn-outline btn-sm" id="notificationBtn"
+                        style="position: relative; font-size: 16px;">
+                        🔔
+                        <span id="notificationBadge"
+                            style="display: none; position: absolute; top: -5px; right: -5px; background: #ff4d4f; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; font-weight: bold;">0</span>
+                    </button>
+
                     <a href="admin.html" class="btn btn-outline btn-sm" id="adminLink" style="display:none;">👑
                         Admin</a>
                     <button class="btn btn-outline btn-sm" id="logoutBtn">🚪 Sair</button>
@@ -179,7 +188,7 @@
                 <label for="createPrazo">📅 Data de Prazo:</label>
                 <input type="date" id="createPrazo" />
 
-                <!-- NOVO CAMPO DE OBSERVAÇÃO -->
+                <!-- CAMPO DE OBSERVAÇÃO -->
                 <label for="createObservacao">📝 Observação:</label>
                 <textarea id="createObservacao" rows="3" placeholder="Digite uma observação..."></textarea>
 
@@ -226,7 +235,7 @@
                 <label for="editPrazo">📅 Data de Prazo:</label>
                 <input type="date" id="editPrazo" />
 
-                <!-- NOVO CAMPO DE OBSERVAÇÃO -->
+                <!-- CAMPO DE OBSERVAÇÃO -->
                 <label for="editObservacao">📝 Observação:</label>
                 <textarea id="editObservacao" rows="3" placeholder="Digite uma observação..."></textarea>
 
@@ -256,6 +265,22 @@
             <div class="modal-footer">
                 <button class="btn btn-outline" id="cancelConfirmBtn">Cancelar</button>
                 <button class="btn btn-danger" id="confirmActionBtn">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL DE NOTIFICAÇÕES ===== -->
+    <div class="modal-overlay" id="notificationModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>🔔 Notificações</h2>
+                <button class="modal-close" id="closeNotificationModalBtn">&times;</button>
+            </div>
+            <div class="modal-body" id="notificationList" style="max-height: 400px; overflow-y: auto;">
+                <!-- As notificações vão aparecer aqui via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="markAsReadBtn">Marcar todas como lidas</button>
             </div>
         </div>
     </div>

@@ -9,6 +9,10 @@ const PORT = process.env.PORT || 8080;
 
 console.log('🚀 Iniciando servidor VolControl...');
 
+// ============================================================
+//  MIDDLEWARE
+// ============================================================
+
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -65,7 +69,7 @@ async function deleteUsuario(id) {
 }
 
 // ============================================================
-//  GET TAREFAS - GARANTINDO FORMATO DA DATA
+//  GET TAREFAS
 // ============================================================
 
 async function getTarefas() {
@@ -97,7 +101,6 @@ async function getTarefas() {
                 }
             }
 
-            // FORÇA A DATA DE FINALIZAÇÃO A SER TEXTO PURO
             if (tarefa.data_finalizacao) {
                 const dataFin = new Date(tarefa.data_finalizacao);
                 if (!isNaN(dataFin.getTime())) {
@@ -145,7 +148,6 @@ async function getTarefasAssistencia() {
                 }
             }
 
-            // FORÇA A DATA DE FINALIZAÇÃO A SER TEXTO PURO
             if (tarefa.data_finalizacao) {
                 const dataFin = new Date(tarefa.data_finalizacao);
                 if (!isNaN(dataFin.getTime())) {
@@ -201,7 +203,6 @@ async function updateTarefa(id, titulo, tag, subtarefas, responsaveis, prazo, ob
 async function updateTarefaStatus(id, status) {
     try {
         if (status === 'done') {
-            // Força o fuso horário do Brasil (UTC-3)
             const agora = new Date();
             const dataBrasil = new Date(agora.getTime() - (3 * 60 * 60 * 1000));
             const dataFormatada = `${dataBrasil.getFullYear()}-${String(dataBrasil.getMonth() + 1).padStart(2, '0')}-${String(dataBrasil.getDate()).padStart(2, '0')}`;
@@ -320,6 +321,50 @@ app.patch('/api/subtarefas/:id', async (req, res) => {
 app.delete('/api/tarefas/:id', async (req, res) => {
     await deleteTarefa(parseInt(req.params.id));
     res.json({ mensagem: 'Tarefa deletada!' });
+});
+
+// ============================================================
+//  ROTA DE NOTIFICAÇÕES
+// ============================================================
+
+app.get('/api/notificacoes', async (req, res) => {
+    try {
+        const [ultimasTarefas] = await db.query(`
+            SELECT t.id, t.titulo, t.data_criacao, u.nome as criador_nome 
+            FROM tarefas t 
+            LEFT JOIN usuarios u ON t.usuario_id = u.id 
+            ORDER BY t.id DESC LIMIT 5
+        `);
+
+        const notificacoes = [];
+
+        ultimasTarefas.forEach(t => {
+            notificacoes.push({
+                id: `task-${t.id}`,
+                tipo: 'nova_tarefa',
+                titulo: 'Nova Tarefa Adicionada',
+                mensagem: `A tarefa "${t.titulo}" foi criada por ${t.criador_nome || 'um usuário'}.`,
+                data: t.data_criacao,
+                icon: '📋'
+            });
+        });
+
+        notificacoes.push({
+            id: 'update-1',
+            tipo: 'update',
+            titulo: 'Atualização do Sistema 🚀',
+            mensagem: 'Novo layout aplicado, selo de aprovação e data de finalização automática já estão ativos!',
+            data: new Date().toISOString(),
+            icon: '✨'
+        });
+
+        notificacoes.sort((a, b) => new Date(b.data) - new Date(a.data));
+
+        res.json(notificacoes);
+    } catch (error) {
+        console.error('❌ Erro ao buscar notificações:', error);
+        res.status(500).json({ erro: 'Erro ao carregar notificações' });
+    }
 });
 
 // ============================================================

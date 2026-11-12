@@ -1,6 +1,6 @@
 /* ============================================================
    style.css - Todos os estilos do VolControl
-   (COM LAYOUT AJUSTADO, 4 COLUNAS E MODAL COM SCROLL)
+   (COM LAYOUT AJUSTADO, 4 COLUNAS, MODAL COM SCROLL E NOTIFICAÇÕES)
    ============================================================ */
 
 /* --- Reset e Estilos Globais --- */
@@ -25,6 +25,11 @@ body {
 .app-container {
     max-width: 1600px;
     margin: 0 auto;
+}
+
+/* Trava a rolagem do fundo quando o modal estiver aberto */
+body.modal-open {
+    overflow: hidden;
 }
 
 /* ============================================================
@@ -1616,7 +1621,64 @@ select[multiple] option:hover {
     background: #f1f8e9;
 }
 
-/* Trava a rolagem do fundo quando o modal estiver aberto */
-body.modal-open {
-    overflow: hidden;
+/* ============================================================
+   NOTIFICAÇÕES
+   ============================================================ */
+
+.notification-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    border-bottom: 1px solid #e1e4e8;
+    transition: background 0.2s;
+}
+
+.notification-item:last-child {
+    border-bottom: none;
+}
+
+.notification-item:hover {
+    background: #f9f9f9;
+}
+
+.notification-icon {
+    font-size: 20px;
+    background: #fff3e0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.notification-icon.update {
+    background: #e8f5e9;
+}
+
+.notification-content {
+    flex: 1;
+}
+
+.notification-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #1a1a1a;
+    margin-bottom: 2px;
+}
+
+.notification-message {
+    font-size: 13px;
+    color: #6b6f76;
+    margin-bottom: 4px;
+}
+
+.notification-date {
+    font-size: 11px;
+    color: #8c929a;
+}
+
+.notification-unread {
+    background: #f0f7ff;
 }
