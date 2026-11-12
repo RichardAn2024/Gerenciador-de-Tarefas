@@ -11,6 +11,31 @@
 
 <body>
 
+    <!-- ===== CORTINA LATERAL ===== -->
+    <div id="curtainTab" class="curtain-tab" onclick="toggleCurtain()">
+        ▶
+    </div>
+
+    <div id="curtainPanel" class="curtain-panel">
+        <div class="curtain-header">
+            <h2>📌 Painel de Avisos</h2>
+            <button class="modal-close" onclick="toggleCurtain()">&times;</button>
+        </div>
+        <div class="curtain-content">
+            <p>Bem-vindo ao <strong>VolControl</strong>!</p>
+            <ul style="margin-top: 10px; margin-left: 20px; color: #555; line-height: 1.8;">
+                <li>Arraste os cards para mudar o status.</li>
+                <li>Clique no ✅ para aprovar tarefas.</li>
+                <li>Use o sino 🔔 para ver notificações.</li>
+                <li>O sistema limpa avisos antigos semanalmente.</li>
+            </ul>
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+            <p style="font-size: 13px; color: #8c929a;">Dica: Você pode fechar esta cortina clicando na seta novamente
+                ou fora dela.</p>
+        </div>
+    </div>
+    <!-- ===== FIM DA CORTINA LATERAL ===== -->
+
     <div class="app-container">
 
         <!-- ===== Cabeçalho ===== -->
@@ -69,7 +94,7 @@
                 <button class="btn btn-outline btn-sm" id="clearSearchBtn">✕ Limpar</button>
             </div>
 
-            <!-- NOVO FILTRO DE STATUS (SELECT) -->
+            <!-- FILTRO DE STATUS (SELECT) -->
             <div class="filter-container">
                 <label for="filterStatus">📌 Status:</label>
                 <select id="filterStatus">

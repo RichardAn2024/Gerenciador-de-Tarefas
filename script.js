@@ -1,6 +1,6 @@
 /* ============================================================
    script.js - Lógica completa do Dashboard 
-   (COM FILTRO SELECT, NOTIFICAÇÕES E ATUALIZAÇÃO INSTANTÂNEA)
+   (COM CORTINA LATERAL, FILTRO SELECT, NOTIFICAÇÕES E DATA)
    ============================================================ */
 
 // --- Estado ---
@@ -28,7 +28,7 @@ const adminLink = document.getElementById('adminLink');
 const searchInput = document.getElementById('searchInput');
 const clearSearchBtn = document.getElementById('clearSearchBtn');
 const sortBy = document.getElementById('sortBy');
-const filterStatus = document.getElementById('filterStatus'); // NOVO SELECT
+const filterStatus = document.getElementById('filterStatus');
 
 // --- Modal de Criação ---
 const createModal = document.getElementById('createModal');
@@ -1028,6 +1028,32 @@ function formatarDataHora(dataStr) {
 }
 
 // ============================================================
+//  LÓGICA DA CORTINA LATERAL
+// ============================================================
+
+function toggleCurtain() {
+    const tab = document.getElementById('curtainTab');
+    const panel = document.getElementById('curtainPanel');
+
+    if (tab && panel) {
+        tab.classList.toggle('open');
+        panel.classList.toggle('open');
+    }
+}
+
+// Fechar a cortina se clicar fora dela
+document.addEventListener('click', (e) => {
+    const panel = document.getElementById('curtainPanel');
+    const tab = document.getElementById('curtainTab');
+
+    if (panel && panel.classList.contains('open')) {
+        if (!panel.contains(e.target) && !tab.contains(e.target)) {
+            toggleCurtain();
+        }
+    }
+});
+
+// ============================================================
 //  CONFIGURAR EVENTOS
 // ============================================================
 
@@ -1133,3 +1159,4 @@ function configurarEventos() {
 window.carregarTarefasDoServidor = carregarTarefasDoServidor;
 window.render = render;
 window.verificarEAtualizarStatusTarefa = verificarEAtualizarStatusTarefa;
+window.toggleCurtain = toggleCurtain;
