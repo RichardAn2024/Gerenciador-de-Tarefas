@@ -1,6 +1,6 @@
 /* ============================================================
    style.css - Todos os estilos do VolControl
-   (COM LAYOUT AJUSTADO, 4 COLUNAS, SCROLL E CORTINA GANTT)
+   (COM CORTINA EM TELA CHEIA, GANTT E LAYOUT AJUSTADO)
    ============================================================ */
 
 /* --- Reset e Estilos Globais --- */
@@ -1618,7 +1618,7 @@ select[multiple] option:hover {
 }
 
 /* ============================================================
-   CORTINA LATERAL (GANTT)
+   CORTINA LATERAL (GANTT EM TELA CHEIA)
    ============================================================ */
 
 .curtain-tab {
@@ -1647,19 +1647,19 @@ select[multiple] option:hover {
 }
 
 .curtain-tab.open {
-    left: 600px;
-    /* Largura do painel Gantt */
+    left: 100%;
+    /* Vai para o final da tela */
     transform: translateY(-50%) rotate(180deg);
     border-radius: 8px 0 0 8px;
 }
 
 .curtain-panel {
     position: fixed;
-    left: -600px;
-    /* Escondido inicialmente */
+    left: -100%;
+    /* Esconde totalmente */
     top: 0;
-    width: 600px;
-    /* Largura do painel Gantt */
+    width: 100%;
+    /* Ocupa a tela inteira */
     height: 100vh;
     background: white;
     z-index: 1000;
@@ -1688,8 +1688,10 @@ select[multiple] option:hover {
 }
 
 .curtain-content {
-    padding: 24px;
+    padding: 0;
     overflow-y: auto;
+    overflow-x: auto;
     flex: 1;
     font-size: 15px;
+    background: #f9f9f9;
 }

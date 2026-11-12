@@ -1,6 +1,6 @@
 /* ============================================================
    script.js - Lógica completa do Dashboard 
-   (COM GRÁFICO DE GANTT, FILTROS, NOTIFICAÇÕES E DATA)
+   (COM GANTT EM TELA CHEIA, FILTROS, NOTIFICAÇÕES E DATA)
    ============================================================ */
 
 // --- Estado ---
@@ -1048,9 +1048,11 @@ function toggleCurtain() {
         tab.classList.toggle('open');
         panel.classList.toggle('open');
 
-        // Se a cortina abriu, renderiza o gráfico
+        // Se a cortina abriu, espera um tempo para a animação e renderiza o gráfico
         if (panel.classList.contains('open')) {
-            renderGantt();
+            setTimeout(() => {
+                renderGantt();
+            }, 400); // 400ms é o tempo da animação do CSS
         }
     }
 }
@@ -1071,9 +1073,8 @@ function renderGantt() {
     const ganttContainer = document.getElementById('ganttContainer');
     if (!ganttContainer) return;
 
-    ganttContainer.innerHTML = ''; // Limpa o gráfico anterior
+    ganttContainer.innerHTML = '';
 
-    // Filtra apenas as tarefas que têm prazo definido
     const tarefasComPrazo = tarefas.filter(t => t.prazo);
 
     if (tarefasComPrazo.length === 0) {
@@ -1081,7 +1082,6 @@ function renderGantt() {
         return;
     }
 
-    // Formata os dados para a biblioteca
     const tasksForGantt = tarefasComPrazo.map(t => {
         const dataInicio = t.data_criacao ? t.data_criacao.split('T')[0] : new Date().toISOString().split('T')[0];
         const dataFim = t.prazo;
@@ -1093,7 +1093,7 @@ function renderGantt() {
 
         return {
             id: String(t.id),
-            name: t.titulo.length > 25 ? t.titulo.substring(0, 25) + '...' : t.titulo,
+            name: t.titulo.length > 30 ? t.titulo.substring(0, 30) + '...' : t.titulo,
             start: dataInicio,
             end: dataFim,
             progress: t.status === 'done' ? 100 : (t.status === 'doing' ? 50 : 0),
@@ -1104,16 +1104,16 @@ function renderGantt() {
         };
     });
 
-    // Inicializa o Gantt
+    // Inicializa o Gantt com largura maior para tela cheia
     ganttChartInstance = new Gantt("#ganttContainer", tasksForGantt, {
         header_height: 50,
-        column_width: 30,
+        column_width: 45, // Mais largo para tela cheia
         step: 24,
         view_modes: ['Day', 'Week', 'Month'],
-        bar_height: 20,
+        bar_height: 24,
         bar_corner_radius: 3,
         arrow_curve: 5,
-        padding: 18,
+        padding: 20,
         view_mode: 'Day',
         date_format: 'YYYY-MM-DD',
         on_click: function (task) {
