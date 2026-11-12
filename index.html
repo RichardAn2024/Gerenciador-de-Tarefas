@@ -45,7 +45,7 @@
                     <span id="userName">Usuário</span>
                     <a href="assistencia.html" class="btn btn-outline btn-sm">🔧 Assistência</a>
 
-                    <!-- NOVO BOTÃO DO SINO -->
+                    <!-- BOTÃO DO SINO -->
                     <button class="btn btn-outline btn-sm" id="notificationBtn"
                         style="position: relative; font-size: 16px;">
                         🔔
@@ -69,12 +69,16 @@
                 <button class="btn btn-outline btn-sm" id="clearSearchBtn">✕ Limpar</button>
             </div>
 
-            <div class="filter-group">
-                <button class="filter-btn active" data-filter="all">Todas</button>
-                <button class="filter-btn" data-filter="todo">A fazer</button>
-                <button class="filter-btn" data-filter="doing">Em andamento</button>
-                <button class="filter-btn" data-filter="approval">⏳ Aguardando Aprovação</button>
-                <button class="filter-btn" data-filter="done">Concluídas</button>
+            <!-- NOVO FILTRO DE STATUS (SELECT) -->
+            <div class="filter-container">
+                <label for="filterStatus">📌 Status:</label>
+                <select id="filterStatus">
+                    <option value="all" selected>Todas</option>
+                    <option value="todo">A fazer</option>
+                    <option value="doing">Em andamento</option>
+                    <option value="approval">⏳ Aguardando Aprovação</option>
+                    <option value="done">Concluídas</option>
+                </select>
             </div>
 
             <div class="filter-responsavel">
@@ -129,7 +133,7 @@
                 <div class="task-list" id="list-doing"></div>
             </div>
 
-            <!-- NOVA COLUNA -->
+            <!-- COLUNA DE APROVAÇÃO -->
             <div class="column" data-status="approval">
                 <div class="column-header">
                     <div class="column-title">⏳ Aguardando Aprovação <span class="column-count"

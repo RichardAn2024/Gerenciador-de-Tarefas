@@ -1,6 +1,6 @@
 /* ============================================================
    script.js - Lógica completa do Dashboard 
-   (COM LIMPEZA SEMANAL E NOTIFICAÇÃO DE UPDATE FIXA)
+   (COM FILTRO SELECT, NOTIFICAÇÕES E ATUALIZAÇÃO INSTANTÂNEA)
    ============================================================ */
 
 // --- Estado ---
@@ -28,6 +28,7 @@ const adminLink = document.getElementById('adminLink');
 const searchInput = document.getElementById('searchInput');
 const clearSearchBtn = document.getElementById('clearSearchBtn');
 const sortBy = document.getElementById('sortBy');
+const filterStatus = document.getElementById('filterStatus'); // NOVO SELECT
 
 // --- Modal de Criação ---
 const createModal = document.getElementById('createModal');
@@ -933,24 +934,6 @@ function formatarData(dataStr) {
     } catch { return dataStr; }
 }
 
-document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentFilter = btn.dataset.filter;
-        currentPage = 1;
-        render();
-    });
-});
-
-if (filterResponsavel) {
-    filterResponsavel.addEventListener('change', () => {
-        currentResponsavelFilter = filterResponsavel.value;
-        currentPage = 1;
-        render();
-    });
-}
-
 // ============================================================
 //  LÓGICA DE NOTIFICAÇÕES (COM LIMPEZA SEMANAL E UPDATE FIXO)
 // ============================================================
@@ -1082,6 +1065,15 @@ function configurarEventos() {
     clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; currentSearchTerm = ''; currentPage = 1; render(); searchInput.focus(); });
     if (sortBy) sortBy.addEventListener('change', () => { currentSort = sortBy.value; currentPage = 1; render(); });
 
+    // Evento do novo Select de Status
+    if (filterStatus) {
+        filterStatus.addEventListener('change', () => {
+            currentFilter = filterStatus.value;
+            currentPage = 1;
+            render();
+        });
+    }
+
     document.querySelectorAll('#prevPageBtnTop, #prevPageBtnBottom').forEach(btn => {
         if (btn) btn.addEventListener('click', () => { if (currentPage > 1) { currentPage--; render(); } });
     });
@@ -1118,7 +1110,6 @@ function configurarEventos() {
         markAsReadBtn.addEventListener('click', () => {
             const now = new Date().toISOString();
             localStorage.setItem(`lastRead_${usuarioLogado.id}`, now);
-            // Esconde a bolinha
             notificationBadge.style.display = 'none';
             renderNotificacoes(now);
             notificationModal.classList.remove('active');
