@@ -324,13 +324,12 @@ app.delete('/api/tarefas/:id', async (req, res) => {
 });
 
 // ============================================================
-//  ROTA DE NOTIFICAÇÕES (COM FILTRO DE DIAS)
+//  ROTA DE NOTIFICAÇÕES (COM FILTRO DE DIAS E UPDATE DINÂMICO)
 // ============================================================
 
 app.get('/api/notificacoes', async (req, res) => {
     try {
-        // Se a URL tiver ?dias=7, ele busca apenas tarefas dos últimos X dias
-        const dias = parseInt(req.query.dias) || 30; // Padrão: 30 dias se não for enviado
+        const dias = parseInt(req.query.dias) || 30;
 
         const [ultimasTarefas] = await db.query(`
             SELECT t.id, t.titulo, t.data_criacao, u.nome as criador_nome 
@@ -353,12 +352,12 @@ app.get('/api/notificacoes', async (req, res) => {
             });
         });
 
-        // Adiciona a notificação fixa de atualização do sistema (SEMPRE APARECE)
+        // Notificação de atualização com ID e DATA DINÂMICA
         notificacoes.push({
-            id: 'update-1',
+            id: 'update-2',
             tipo: 'update',
             titulo: 'Atualização do Sistema 🚀',
-            mensagem: 'Novo layout aplicado, selo de aprovação e data de finalização automática já estão ativos!',
+            mensagem: 'Sistema de notificações semanais e trava de rolagem implementados com sucesso!',
             data: new Date().toISOString(),
             icon: '✨'
         });

@@ -1,6 +1,6 @@
 /* ============================================================
    script.js - Lógica completa do Dashboard 
-   (COM LIMPEZA SEMANAL DE NOTIFICAÇÕES, TRAVA DE ROLAGEM E DATA)
+   (COM LIMPEZA SEMANAL E NOTIFICAÇÃO DE UPDATE FIXA)
    ============================================================ */
 
 // --- Estado ---
@@ -722,13 +722,13 @@ function openCreateModal() {
     createObservacao.value = '';
     subtaskList.innerHTML = '';
     createModal.classList.add('active');
-    document.body.classList.add('modal-open'); // Trava a rolagem do fundo
+    document.body.classList.add('modal-open');
     createTitle.focus();
 }
 
 function closeCreateModal() {
     createModal.classList.remove('active');
-    document.body.classList.remove('modal-open'); // Destrava a rolagem do fundo
+    document.body.classList.remove('modal-open');
 }
 
 function addSubtaskInput(container) {
@@ -823,13 +823,13 @@ function openEditModal(taskId) {
     editObservacao.value = task.observacao || '';
     loadSubtasksIntoContainer(editSubtaskList, task.subtarefas || []);
     editModal.classList.add('active');
-    document.body.classList.add('modal-open'); // Trava a rolagem do fundo
+    document.body.classList.add('modal-open');
     editTitle.focus();
 }
 
 function closeEditModal() {
     editModal.classList.remove('active');
-    document.body.classList.remove('modal-open'); // Destrava a rolagem do fundo
+    document.body.classList.remove('modal-open');
     editingTaskId = null;
 }
 
@@ -860,7 +860,7 @@ function confirmarExclusao(taskId) {
     confirmTitle.textContent = '🗑️ Excluir Tarefa';
     confirmMessage.textContent = 'Tem certeza que deseja excluir esta tarefa permanentemente?';
     confirmModal.classList.add('active');
-    document.body.classList.add('modal-open'); // Trava a rolagem do fundo
+    document.body.classList.add('modal-open');
     confirmActionBtn.onclick = executarExclusao;
 }
 
@@ -876,7 +876,7 @@ async function executarExclusao() {
 
 function closeConfirmModal() {
     confirmModal.classList.remove('active');
-    document.body.classList.remove('modal-open'); // Destrava a rolagem do fundo
+    document.body.classList.remove('modal-open');
     pendingDeleteId = null;
 }
 
@@ -885,7 +885,7 @@ async function clearAllTasks() {
     confirmTitle.textContent = '⚠️ Limpar Todas as Tarefas';
     confirmMessage.textContent = `Tem certeza que deseja excluir TODAS as ${tarefas.length} tarefas?`;
     confirmModal.classList.add('active');
-    document.body.classList.add('modal-open'); // Trava a rolagem do fundo
+    document.body.classList.add('modal-open');
     confirmActionBtn.onclick = async () => {
         try {
             for (const task of tarefas) await deletarTarefa(task.id);
@@ -952,7 +952,7 @@ if (filterResponsavel) {
 }
 
 // ============================================================
-//  LÓGICA DE NOTIFICAÇÕES (COM LIMPEZA SEMANAL)
+//  LÓGICA DE NOTIFICAÇÕES (COM LIMPEZA SEMANAL E UPDATE FIXO)
 // ============================================================
 
 async function verificarNotificacoes() {
@@ -963,23 +963,20 @@ async function verificarNotificacoes() {
         const lastCleanKey = `lastClean_${usuarioLogado.id}`;
         const lastClean = localStorage.getItem(lastCleanKey);
         const now = new Date();
-        let diasParaBuscar = 30; // Padrão inicial
+        let diasParaBuscar = 30;
 
         if (lastClean) {
             const diffTime = Math.abs(now - new Date(lastClean));
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-            // Se passou de 7 dias, resetamos a data de limpeza e buscamos apenas 1 dia (para limpar as antigas)
             if (diffDays >= 7) {
                 localStorage.setItem(lastCleanKey, now.toISOString());
-                diasParaBuscar = 1; // Apenas notificações de hoje
+                diasParaBuscar = 1;
             }
         } else {
-            // Se nunca limpou, define a data de hoje
             localStorage.setItem(lastCleanKey, now.toISOString());
         }
 
-        // Chama a API enviando os dias calculados
         const response = await apiRequest(`/notificacoes?dias=${diasParaBuscar}`);
         notificacoesGlobais = await response.json();
 
@@ -991,7 +988,10 @@ async function verificarNotificacoes() {
         if (!lastRead) {
             unreadCount = notificacoesGlobais.length;
         } else {
-            unreadCount = notificacoesGlobais.filter(n => new Date(n.data) > new Date(lastRead)).length;
+            // O Update SEMPRE conta como não lido
+            unreadCount = notificacoesGlobais.filter(n =>
+                n.tipo === 'update' || new Date(n.data) > new Date(lastRead)
+            ).length;
         }
 
         if (unreadCount > 0) {
@@ -1018,7 +1018,9 @@ function renderNotificacoes(lastRead) {
     }
 
     notificacoesGlobais.forEach(n => {
-        const isUnread = !lastRead || new Date(n.data) > new Date(lastRead);
+        // O Update SEMPRE aparece destacado
+        const isUnread = n.tipo === 'update' || !lastRead || new Date(n.data) > new Date(lastRead);
+
         const item = document.createElement('div');
         item.className = `notification-item ${isUnread ? 'notification-unread' : ''}`;
 
@@ -1116,6 +1118,7 @@ function configurarEventos() {
         markAsReadBtn.addEventListener('click', () => {
             const now = new Date().toISOString();
             localStorage.setItem(`lastRead_${usuarioLogado.id}`, now);
+            // Esconde a bolinha
             notificationBadge.style.display = 'none';
             renderNotificacoes(now);
             notificationModal.classList.remove('active');
