@@ -1,6 +1,6 @@
 /* ============================================================
    script.js - Lógica completa do Dashboard 
-   (COM NOTIFICAÇÕES, TRAVA DE ROLAGEM E ATUALIZAÇÃO INSTANTÂNEA)
+   (COM LIMPEZA SEMANAL DE NOTIFICAÇÕES, TRAVA DE ROLAGEM E DATA)
    ============================================================ */
 
 // --- Estado ---
@@ -101,7 +101,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await carregarTarefasDoServidor();
     configurarEventos();
 
-    // Verifica notificações após 1 segundo para garantir que o usuário está carregado
     setTimeout(() => {
         if (usuarioLogado) verificarNotificacoes();
     }, 1000);
@@ -953,17 +952,38 @@ if (filterResponsavel) {
 }
 
 // ============================================================
-//  LÓGICA DE NOTIFICAÇÕES
+//  LÓGICA DE NOTIFICAÇÕES (COM LIMPEZA SEMANAL)
 // ============================================================
 
 async function verificarNotificacoes() {
     if (!usuarioLogado) return;
 
     try {
-        const response = await apiRequest('/notificacoes');
+        // --- LÓGICA DE LIMPEZA SEMANAL ---
+        const lastCleanKey = `lastClean_${usuarioLogado.id}`;
+        const lastClean = localStorage.getItem(lastCleanKey);
+        const now = new Date();
+        let diasParaBuscar = 30; // Padrão inicial
+
+        if (lastClean) {
+            const diffTime = Math.abs(now - new Date(lastClean));
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            // Se passou de 7 dias, resetamos a data de limpeza e buscamos apenas 1 dia (para limpar as antigas)
+            if (diffDays >= 7) {
+                localStorage.setItem(lastCleanKey, now.toISOString());
+                diasParaBuscar = 1; // Apenas notificações de hoje
+            }
+        } else {
+            // Se nunca limpou, define a data de hoje
+            localStorage.setItem(lastCleanKey, now.toISOString());
+        }
+
+        // Chama a API enviando os dias calculados
+        const response = await apiRequest(`/notificacoes?dias=${diasParaBuscar}`);
         notificacoesGlobais = await response.json();
 
-        // Pega a data da última leitura do localStorage (separado por ID de usuário)
+        // Lógica do badge (bolinha vermelha)
         const lastReadKey = `lastRead_${usuarioLogado.id}`;
         const lastRead = localStorage.getItem(lastReadKey);
 

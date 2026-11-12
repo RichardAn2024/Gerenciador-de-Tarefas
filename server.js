@@ -324,17 +324,21 @@ app.delete('/api/tarefas/:id', async (req, res) => {
 });
 
 // ============================================================
-//  ROTA DE NOTIFICAÇÕES
+//  ROTA DE NOTIFICAÇÕES (COM FILTRO DE DIAS)
 // ============================================================
 
 app.get('/api/notificacoes', async (req, res) => {
     try {
+        // Se a URL tiver ?dias=7, ele busca apenas tarefas dos últimos X dias
+        const dias = parseInt(req.query.dias) || 30; // Padrão: 30 dias se não for enviado
+
         const [ultimasTarefas] = await db.query(`
             SELECT t.id, t.titulo, t.data_criacao, u.nome as criador_nome 
             FROM tarefas t 
             LEFT JOIN usuarios u ON t.usuario_id = u.id 
+            WHERE t.data_criacao >= DATE_SUB(NOW(), INTERVAL ? DAY)
             ORDER BY t.id DESC LIMIT 5
-        `);
+        `, [dias]);
 
         const notificacoes = [];
 
@@ -349,6 +353,7 @@ app.get('/api/notificacoes', async (req, res) => {
             });
         });
 
+        // Adiciona a notificação fixa de atualização do sistema (SEMPRE APARECE)
         notificacoes.push({
             id: 'update-1',
             tipo: 'update',
