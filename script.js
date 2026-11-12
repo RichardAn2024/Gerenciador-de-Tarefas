@@ -1,6 +1,6 @@
 /* ============================================================
    script.js - Lógica completa do Dashboard 
-   (COM CORTINA LATERAL, FILTRO SELECT, NOTIFICAÇÕES E DATA)
+   (COM GRÁFICO DE GANTT, FILTROS, NOTIFICAÇÕES E DATA)
    ============================================================ */
 
 // --- Estado ---
@@ -17,6 +17,9 @@ let usuarioLogado = null;
 let currentPage = 1;
 const tasksPerColumn = 10;
 let totalPages = 1;
+
+// --- Gantt ---
+let ganttChartInstance = null;
 
 // --- Referências DOM ---
 const openCreateBtn = document.getElementById('openCreateBtn');
@@ -297,6 +300,12 @@ function render() {
     renderPagination(filtered.length);
     updateCounters();
     updateStats();
+
+    // Se a cortina do Gantt estiver aberta, atualiza o gráfico
+    const panel = document.getElementById('curtainPanel');
+    if (panel && panel.classList.contains('open')) {
+        renderGantt();
+    }
 }
 
 // ============================================================
@@ -1028,7 +1037,7 @@ function formatarDataHora(dataStr) {
 }
 
 // ============================================================
-//  LÓGICA DA CORTINA LATERAL
+//  LÓGICA DA CORTINA LATERAL E GRÁFICO DE GANTT
 // ============================================================
 
 function toggleCurtain() {
@@ -1038,6 +1047,11 @@ function toggleCurtain() {
     if (tab && panel) {
         tab.classList.toggle('open');
         panel.classList.toggle('open');
+
+        // Se a cortina abriu, renderiza o gráfico
+        if (panel.classList.contains('open')) {
+            renderGantt();
+        }
     }
 }
 
@@ -1052,6 +1066,64 @@ document.addEventListener('click', (e) => {
         }
     }
 });
+
+function renderGantt() {
+    const ganttContainer = document.getElementById('ganttContainer');
+    if (!ganttContainer) return;
+
+    ganttContainer.innerHTML = ''; // Limpa o gráfico anterior
+
+    // Filtra apenas as tarefas que têm prazo definido
+    const tarefasComPrazo = tarefas.filter(t => t.prazo);
+
+    if (tarefasComPrazo.length === 0) {
+        ganttContainer.innerHTML = '<p style="text-align:center; padding: 40px; color:#8c929a;">Nenhuma tarefa com prazo definido para exibir no Gantt.</p>';
+        return;
+    }
+
+    // Formata os dados para a biblioteca
+    const tasksForGantt = tarefasComPrazo.map(t => {
+        const dataInicio = t.data_criacao ? t.data_criacao.split('T')[0] : new Date().toISOString().split('T')[0];
+        const dataFim = t.prazo;
+
+        let cor = '#F57C00'; // Padrão
+        if (t.status === 'done') cor = '#4CAF50';
+        if (t.status === 'approval') cor = '#2196F3';
+        if (t.status === 'doing') cor = '#FF9800';
+
+        return {
+            id: String(t.id),
+            name: t.titulo.length > 25 ? t.titulo.substring(0, 25) + '...' : t.titulo,
+            start: dataInicio,
+            end: dataFim,
+            progress: t.status === 'done' ? 100 : (t.status === 'doing' ? 50 : 0),
+            styles: {
+                'bar': `fill: ${cor};`,
+                'bar-progress': `fill: #388E3C;`
+            }
+        };
+    });
+
+    // Inicializa o Gantt
+    ganttChartInstance = new Gantt("#ganttContainer", tasksForGantt, {
+        header_height: 50,
+        column_width: 30,
+        step: 24,
+        view_modes: ['Day', 'Week', 'Month'],
+        bar_height: 20,
+        bar_corner_radius: 3,
+        arrow_curve: 5,
+        padding: 18,
+        view_mode: 'Day',
+        date_format: 'YYYY-MM-DD',
+        on_click: function (task) {
+            if (confirm(`Deseja editar a tarefa: ${task.name}?`)) {
+                toggleCurtain();
+                openEditModal(parseInt(task.id));
+            }
+        }
+    });
+}
 
 // ============================================================
 //  CONFIGURAR EVENTOS

@@ -1,6 +1,6 @@
 /* ============================================================
    style.css - Todos os estilos do VolControl
-   (COM LAYOUT AJUSTADO, 4 COLUNAS, MODAL COM SCROLL E NOTIFICAÇÕES)
+   (COM LAYOUT AJUSTADO, 4 COLUNAS, SCROLL E CORTINA GANTT)
    ============================================================ */
 
 /* --- Reset e Estilos Globais --- */
@@ -238,36 +238,6 @@ body.modal-open {
 .btn-full {
     width: 100%;
     justify-content: center;
-}
-
-/* --- Filtros --- */
-.filter-group {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-}
-
-.filter-btn {
-    padding: 6px 14px;
-    border: 1.5px solid #e1e4e8;
-    border-radius: 20px;
-    background: white;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: 0.2s;
-    color: #4a4a4a;
-}
-
-.filter-btn:hover {
-    border-color: #F57C00;
-    color: #F57C00;
-}
-
-.filter-btn.active {
-    background: #F57C00;
-    color: white;
-    border-color: #F57C00;
 }
 
 /* ============================================================
@@ -523,19 +493,6 @@ body.modal-open {
     transform: scale(1.1);
 }
 
-.reject-btn {
-    background: #f44336 !important;
-    color: white !important;
-    border-radius: 4px !important;
-    padding: 2px 6px !important;
-    font-size: 13px !important;
-}
-
-.reject-btn:hover {
-    background: #d32f2f !important;
-    transform: scale(1.1);
-}
-
 /* --- Drag & Drop --- */
 .column.drag-over {
     background: #e3e9f5;
@@ -594,12 +551,9 @@ body.modal-open {
     max-width: 500px;
     width: 90%;
     max-height: 90vh;
-    /* Limita a altura a 90% da tela */
     display: flex;
     flex-direction: column;
-    /* Permite separar cabeçalho, corpo e rodapé */
     padding: 0;
-    /* Tiramos o padding daqui para colocar no corpo */
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     animation: slideUp 0.3s ease;
 }
@@ -641,7 +595,6 @@ body.modal-open {
     padding: 24px 32px 16px 32px;
     margin-bottom: 0;
     border-bottom: 1px solid #e1e4e8;
-    /* Linha separadora */
 }
 
 .modal-header h2 {
@@ -670,12 +623,9 @@ body.modal-open {
     gap: 16px;
     padding: 24px 32px;
     overflow-y: auto;
-    /* CRIA A BARRA DE ROLAGEM */
     flex: 1;
-    /* Faz o corpo ocupar todo o espaço disponível */
 }
 
-/* Barra de rolagem personalizada */
 .modal-body::-webkit-scrollbar {
     width: 8px;
 }
@@ -785,7 +735,6 @@ body.modal-open {
     margin-top: 0;
     background: white;
     border-radius: 0 0 16px 16px;
-    /* Mantém a borda arredondada embaixo */
 }
 
 /* ============================================================
@@ -802,7 +751,6 @@ body.modal-open {
     position: relative;
 }
 
-/* Overlay escuro para melhor legibilidade do texto */
 .auth-page::before {
     content: '';
     position: absolute;
@@ -814,7 +762,6 @@ body.modal-open {
     z-index: 0;
 }
 
-/* Círculos decorativos flutuantes */
 .auth-page .circle-decoration {
     position: absolute;
     border-radius: 50%;
@@ -847,9 +794,6 @@ body.modal-open {
     z-index: 1;
 }
 
-/* ============================================================
-   AUTH-BOX COM EFEITO GLASSMORPHISM (TRANSPARENTE)
-   ============================================================ */
 .auth-box {
     background: rgba(255, 255, 255, 0.12);
     backdrop-filter: blur(16px);
@@ -1212,20 +1156,15 @@ body.modal-open {
     align-items: center;
     gap: 6px;
     flex: 2;
-    /* Aumentei de 1 para 2 (ocupa mais espaço) */
     max-width: 500px;
-    /* Aumentei de 350px para 500px */
     min-width: 250px;
-    /* Garante um tamanho mínimo */
 }
 
 .search-input {
     padding: 10px 16px;
-    /* Aumentei o padding para ficar mais alto */
     border: 1.5px solid #e1e4e8;
     border-radius: 8px;
     font-size: 15px;
-    /* Aumentei de 14px para 15px */
     width: 100%;
     transition: 0.3s ease;
     background: white;
@@ -1243,7 +1182,6 @@ body.modal-open {
 
 #clearSearchBtn {
     padding: 8px 14px;
-    /* Ajustei o botão para acompanhar a altura */
     font-size: 14px;
     white-space: nowrap;
 }
@@ -1449,8 +1387,14 @@ select[multiple] option:hover {
         align-items: stretch;
     }
 
-    .filter-group {
+    .filter-container {
+        width: 100%;
         justify-content: center;
+    }
+
+    .filter-container select {
+        flex: 1;
+        max-width: 200px;
     }
 
     .filter-responsavel {
@@ -1590,16 +1534,6 @@ select[multiple] option:hover {
     color: #2e7d32;
 }
 
-.task-status-badge.todo {
-    background: #e3f2fd;
-    color: #1565C0;
-}
-
-.task-status-badge.doing {
-    background: #fff8e1;
-    color: #F57C00;
-}
-
 /* ============================================================
    DATA DE FINALIZAÇÃO
    ============================================================ */
@@ -1684,55 +1618,7 @@ select[multiple] option:hover {
 }
 
 /* ============================================================
-   FILTRO DE STATUS (NOVO SELECT)
-   ============================================================ */
-
-.filter-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-left: 8px;
-}
-
-.filter-container label {
-    font-size: 13px;
-    font-weight: 500;
-    color: #4a4a4a;
-    white-space: nowrap;
-}
-
-.filter-container select {
-    padding: 6px 12px;
-    border: 1.5px solid #e1e4e8;
-    border-radius: 8px;
-    font-size: 13px;
-    background: white;
-    cursor: pointer;
-    transition: 0.2s;
-    min-width: 140px;
-}
-
-.filter-container select:focus {
-    outline: none;
-    border-color: #F57C00;
-    box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.15);
-}
-
-/* Responsividade */
-@media (max-width: 850px) {
-    .filter-container {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .filter-container select {
-        flex: 1;
-        max-width: 200px;
-    }
-}
-
-/* ============================================================
-   CORTINA LATERAL (SIDE DRAWER)
+   CORTINA LATERAL (GANTT)
    ============================================================ */
 
 .curtain-tab {
@@ -1761,24 +1647,24 @@ select[multiple] option:hover {
 }
 
 .curtain-tab.open {
-    left: 320px;
-    /* Mesma largura do painel */
+    left: 600px;
+    /* Largura do painel Gantt */
     transform: translateY(-50%) rotate(180deg);
     border-radius: 8px 0 0 8px;
 }
 
 .curtain-panel {
     position: fixed;
-    left: -320px;
+    left: -600px;
     /* Escondido inicialmente */
     top: 0;
-    width: 320px;
+    width: 600px;
+    /* Largura do painel Gantt */
     height: 100vh;
     background: white;
     z-index: 1000;
     box-shadow: 2px 0 15px rgba(0, 0, 0, 0.1);
     transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    /* Animação suave */
     display: flex;
     flex-direction: column;
 }
@@ -1806,23 +1692,4 @@ select[multiple] option:hover {
     overflow-y: auto;
     flex: 1;
     font-size: 15px;
-}
-
-/* Overlay escuro atrás da cortina (opcional) */
-.curtain-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    z-index: 999;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s ease;
-}
-
-.curtain-overlay.open {
-    opacity: 1;
-    visibility: visible;
 }

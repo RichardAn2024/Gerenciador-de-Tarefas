@@ -7,31 +7,26 @@
     <title>VolControl - Gestão de Tarefas</title>
     <link rel="icon" type="image/png" href="images/simbolicon.png" />
     <link rel="stylesheet" href="style.css" />
+
+    <!-- BIBLIOTECA DO GRÁFICO DE GANTT -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/frappe-gantt/0.6.1/frappe-gantt.css" />
 </head>
 
 <body>
 
-    <!-- ===== CORTINA LATERAL ===== -->
+    <!-- ===== CORTINA LATERAL (GANTT) ===== -->
     <div id="curtainTab" class="curtain-tab" onclick="toggleCurtain()">
         ▶
     </div>
 
     <div id="curtainPanel" class="curtain-panel">
         <div class="curtain-header">
-            <h2>📌 Painel de Avisos</h2>
+            <h2>📊 Cronograma (Gantt)</h2>
             <button class="modal-close" onclick="toggleCurtain()">&times;</button>
         </div>
-        <div class="curtain-content">
-            <p>Bem-vindo ao <strong>VolControl</strong>!</p>
-            <ul style="margin-top: 10px; margin-left: 20px; color: #555; line-height: 1.8;">
-                <li>Arraste os cards para mudar o status.</li>
-                <li>Clique no ✅ para aprovar tarefas.</li>
-                <li>Use o sino 🔔 para ver notificações.</li>
-                <li>O sistema limpa avisos antigos semanalmente.</li>
-            </ul>
-            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-            <p style="font-size: 13px; color: #8c929a;">Dica: Você pode fechar esta cortina clicando na seta novamente
-                ou fora dela.</p>
+        <div class="curtain-content" style="padding: 0; background: #f9f9f9;">
+            <!-- O gráfico será renderizado aqui -->
+            <div id="ganttContainer" style="width: 100%; height: 100%; overflow: auto;"></div>
         </div>
     </div>
     <!-- ===== FIM DA CORTINA LATERAL ===== -->
@@ -313,6 +308,9 @@
             </div>
         </div>
     </div>
+
+    <!-- BIBLIOTECA DO GRÁFICO DE GANTT (SCRIPT) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/frappe-gantt/0.6.1/frappe-gantt.min.js"></script>
 
     <script src="auth.js"></script>
     <script src="script.js"></script>
