@@ -1,6 +1,6 @@
 /* ============================================================
    script.js - Lógica completa do Dashboard 
-   (COM ATUALIZAÇÃO INSTANTÂNEA DA DATA DE FINALIZAÇÃO)
+   (COM TRAVA DE ROLAGEM NO MODAL E ATUALIZAÇÃO INSTANTÂNEA)
    ============================================================ */
 
 // --- Estado ---
@@ -676,7 +676,6 @@ async function verificarEAtualizarStatusTarefa(taskId) {
         try {
             await atualizarStatusTarefa(taskId, novoStatus);
             task.status = novoStatus;
-            // Recarrega para pegar a data de finalização
             await carregarTarefasDoServidor();
         } catch (error) { console.error('Erro ao atualizar status:', error); }
     }
@@ -709,10 +708,14 @@ function openCreateModal() {
     createObservacao.value = '';
     subtaskList.innerHTML = '';
     createModal.classList.add('active');
+    document.body.classList.add('modal-open'); // Trava a rolagem do fundo
     createTitle.focus();
 }
 
-function closeCreateModal() { createModal.classList.remove('active'); }
+function closeCreateModal() {
+    createModal.classList.remove('active');
+    document.body.classList.remove('modal-open'); // Destrava a rolagem do fundo
+}
 
 function addSubtaskInput(container) {
     const row = document.createElement('div');
@@ -806,10 +809,15 @@ function openEditModal(taskId) {
     editObservacao.value = task.observacao || '';
     loadSubtasksIntoContainer(editSubtaskList, task.subtarefas || []);
     editModal.classList.add('active');
+    document.body.classList.add('modal-open'); // Trava a rolagem do fundo
     editTitle.focus();
 }
 
-function closeEditModal() { editModal.classList.remove('active'); editingTaskId = null; }
+function closeEditModal() {
+    editModal.classList.remove('active');
+    document.body.classList.remove('modal-open'); // Destrava a rolagem do fundo
+    editingTaskId = null;
+}
 
 async function salvarEdicaoComVerificacao() {
     if (editingTaskId === null) return;
@@ -838,6 +846,7 @@ function confirmarExclusao(taskId) {
     confirmTitle.textContent = '🗑️ Excluir Tarefa';
     confirmMessage.textContent = 'Tem certeza que deseja excluir esta tarefa permanentemente?';
     confirmModal.classList.add('active');
+    document.body.classList.add('modal-open'); // Trava a rolagem do fundo
     confirmActionBtn.onclick = executarExclusao;
 }
 
@@ -851,13 +860,18 @@ async function executarExclusao() {
     } catch (error) { alert(error.message); }
 }
 
-function closeConfirmModal() { confirmModal.classList.remove('active'); pendingDeleteId = null; }
+function closeConfirmModal() {
+    confirmModal.classList.remove('active');
+    document.body.classList.remove('modal-open'); // Destrava a rolagem do fundo
+    pendingDeleteId = null;
+}
 
 async function clearAllTasks() {
     if (tarefas.length === 0) return;
     confirmTitle.textContent = '⚠️ Limpar Todas as Tarefas';
     confirmMessage.textContent = `Tem certeza que deseja excluir TODAS as ${tarefas.length} tarefas?`;
     confirmModal.classList.add('active');
+    document.body.classList.add('modal-open'); // Trava a rolagem do fundo
     confirmActionBtn.onclick = async () => {
         try {
             for (const task of tarefas) await deletarTarefa(task.id);
@@ -949,6 +963,7 @@ function configurarEventos() {
         confirmTitle.textContent = '🚪 Sair';
         confirmMessage.textContent = 'Tem certeza que deseja sair?';
         confirmModal.classList.add('active');
+        document.body.classList.add('modal-open');
         confirmActionBtn.onclick = () => { logout(); closeConfirmModal(); };
     });
 

@@ -1615,3 +1615,8 @@ select[multiple] option:hover {
 .column[data-status="done"] .task-card {
     background: #f1f8e9;
 }
+
+/* Trava a rolagem do fundo quando o modal estiver aberto */
+body.modal-open {
+    overflow: hidden;
+}
