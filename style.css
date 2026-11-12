@@ -1,6 +1,6 @@
 /* ============================================================
    style.css - Todos os estilos do VolControl
-   (COM LAYOUT AJUSTADO - 4 COLUNAS IGUAIS)
+   (COM LAYOUT AJUSTADO, 4 COLUNAS E MODAL COM SCROLL)
    ============================================================ */
 
 /* --- Reset e Estilos Globais --- */
@@ -562,7 +562,7 @@ body {
 }
 
 /* ============================================================
-   MODAL
+   MODAL (COM SCROLL E BOTÕES FIXOS)
    ============================================================ */
 .modal-overlay {
     display: none;
@@ -588,7 +588,13 @@ body {
     border-radius: 16px;
     max-width: 500px;
     width: 90%;
-    padding: 32px;
+    max-height: 90vh;
+    /* Limita a altura a 90% da tela */
+    display: flex;
+    flex-direction: column;
+    /* Permite separar cabeçalho, corpo e rodapé */
+    padding: 0;
+    /* Tiramos o padding daqui para colocar no corpo */
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     animation: slideUp 0.3s ease;
 }
@@ -627,7 +633,10 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 24px;
+    padding: 24px 32px 16px 32px;
+    margin-bottom: 0;
+    border-bottom: 1px solid #e1e4e8;
+    /* Linha separadora */
 }
 
 .modal-header h2 {
@@ -654,6 +663,30 @@ body {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    padding: 24px 32px;
+    overflow-y: auto;
+    /* CRIA A BARRA DE ROLAGEM */
+    flex: 1;
+    /* Faz o corpo ocupar todo o espaço disponível */
+}
+
+/* Barra de rolagem personalizada */
+.modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
 }
 
 .modal-body label {
@@ -742,9 +775,12 @@ body {
     display: flex;
     justify-content: flex-end;
     gap: 12px;
-    margin-top: 24px;
-    padding-top: 16px;
+    padding: 16px 32px 24px 32px;
     border-top: 1px solid #e1e4e8;
+    margin-top: 0;
+    background: white;
+    border-radius: 0 0 16px 16px;
+    /* Mantém a borda arredondada embaixo */
 }
 
 /* ============================================================
