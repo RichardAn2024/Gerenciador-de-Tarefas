@@ -1618,7 +1618,7 @@ select[multiple] option:hover {
 }
 
 /* ============================================================
-   CORTINA LATERAL (GANTT EM TELA CHEIA - SEM ROLAGEM)
+   CORTINA LATERAL (GANTT EM TELA CHEIA - SEM CORTAR O HEADER)
    ============================================================ */
 
 .curtain-tab {
@@ -1698,7 +1698,7 @@ select[multiple] option:hover {
     position: relative;
 }
 
-/* Container do Gantt - ocupa exatamente o espaço disponível, sem rolar */
+/* Container do Gantt - ocupa exatamente o espaço disponível */
 #ganttContainer {
     width: 100%;
     height: 100%;
@@ -1706,13 +1706,28 @@ select[multiple] option:hover {
     padding: 0;
 }
 
-/* Ajustes no SVG do Gantt para caber na tela */
+/* Ajustes no wrapper do Gantt (sem cortar o cabeçalho de datas e a coluna de nomes) */
 #ganttContainer .gantt {
     width: 100% !important;
 }
 
 #ganttContainer .gantt-container {
-    overflow: hidden !important;
+    /* NÃO usar overflow:hidden total — o Frappe precisa rolar internamente
+       para o cabeçalho de datas e a coluna de nomes ficarem visíveis */
+    width: 100% !important;
     height: 100% !important;
     max-height: 100% !important;
+    overflow-x: hidden;
+    /* só trava o horizontal */
+    overflow-y: auto;
+    /* deixa rolar vertical se estourar */
+}
+
+/* Garante que o cabeçalho de datas apareça sempre */
+#ganttContainer .gantt-container .grid-header,
+#ganttContainer .gantt-container .gantt .grid-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #f9f9f9;
 }

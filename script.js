@@ -1038,7 +1038,7 @@ function formatarDataHora(dataStr) {
 
 // ============================================================
 //  LÓGICA DA CORTINA LATERAL E GRÁFICO DE GANTT
-//  (AJUSTADA PARA CABER NA TELA SEM ROLAGEM)
+//  (AJUSTADA PARA CABER NA TELA SEM ROLAGEM E SEM CORTAR O HEADER)
 // ============================================================
 
 function toggleCurtain() {
@@ -1185,20 +1185,17 @@ function renderGantt() {
         }
     });
 
-    // --- Ajuste fino: força o SVG e o wrapper a caber no container ---
+    // --- Ajuste fino: NÃO cortar o cabeçalho de datas nem os nomes ---
     setTimeout(() => {
-        const svg = ganttContainer.querySelector('svg');
         const wrapper = ganttContainer.querySelector('.gantt-container');
         if (wrapper) {
             wrapper.style.width = '100%';
             wrapper.style.height = '100%';
-            wrapper.style.overflow = 'hidden';
+            // Não força overflow:hidden — deixa o Frappe rolar se precisar
+            wrapper.style.overflowX = 'hidden';
+            wrapper.style.overflowY = 'auto';
         }
-        if (svg) {
-            svg.style.maxWidth = '100%';
-            svg.style.height = '100%';
-            svg.setAttribute('preserveAspectRatio', 'xMinYMin meet');
-        }
+        // NÃO mexer no preserveAspectRatio — ele que estava achatando o SVG
     }, 50);
 }
 
