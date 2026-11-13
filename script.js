@@ -1038,6 +1038,7 @@ function formatarDataHora(dataStr) {
 
 // ============================================================
 //  LÓGICA DA CORTINA LATERAL E GRÁFICO DE GANTT
+//  (AJUSTADA PARA CABER NA TELA SEM ROLAGEM)
 // ============================================================
 
 function toggleCurtain() {
@@ -1048,11 +1049,24 @@ function toggleCurtain() {
         tab.classList.toggle('open');
         panel.classList.toggle('open');
 
-        // Se a cortina abriu, espera um tempo para a animação e renderiza o gráfico
+        // Se a cortina abriu, espera a transição terminar e renderiza o gráfico
         if (panel.classList.contains('open')) {
-            setTimeout(() => {
+            let rendered = false;
+            const onEnd = () => {
+                if (rendered) return;
+                rendered = true;
+                panel.removeEventListener('transitionend', onEnd);
                 renderGantt();
-            }, 400); // 400ms é o tempo da animação do CSS
+            };
+            panel.addEventListener('transitionend', onEnd);
+
+            // Fallback: se transitionend não disparar, renderiza mesmo assim
+            setTimeout(() => {
+                if (!rendered && panel.classList.contains('open')) {
+                    rendered = true;
+                    renderGantt();
+                }
+            }, 600);
         }
     }
 }
@@ -1082,18 +1096,66 @@ function renderGantt() {
         return;
     }
 
+    // --- Calcula o range de datas (min start, max end) ---
+    let minDate = null;
+    let maxDate = null;
+
+    tarefasComPrazo.forEach(t => {
+        const ini = t.data_criacao ? new Date(t.data_criacao.split('T')[0]) : new Date();
+        const fim = new Date(t.prazo);
+        if (!minDate || ini < minDate) minDate = ini;
+        if (!maxDate || fim > maxDate) maxDate = fim;
+    });
+
+    // Margem de 1 dia pra cada lado
+    minDate = new Date(minDate);
+    minDate.setDate(minDate.getDate() - 1);
+    maxDate = new Date(maxDate);
+    maxDate.setDate(maxDate.getDate() + 1);
+
+    const diasTotais = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1;
+
+    // --- Mede o espaço disponível na cortina ---
+    const larguraDisponivel = ganttContainer.clientWidth || window.innerWidth;
+    const alturaDisponivel = ganttContainer.clientHeight || (window.innerHeight - 100);
+
+    // Coluna do lado esquerdo do Frappe (nomes das tarefas) ~ 200px
+    const larguraListaNomes = 200;
+    const larguraParaBarras = Math.max(larguraDisponivel - larguraListaNomes - 20, 300);
+
+    // Calcula column_width pra caber todos os dias SEM rolagem horizontal
+    let columnWidth = Math.floor(larguraParaBarras / diasTotais);
+    if (columnWidth < 18) columnWidth = 18; // mínimo legível
+
+    // --- Calcula quantas linhas cabem sem rolagem vertical ---
+    const headerHeight = 50;
+    const barHeight = 24;
+    const padding = 20;
+    const espacoParaBarras = Math.max(alturaDisponivel - headerHeight - (padding * 2), 100);
+    const linhaMinima = 38;
+    const linhasQueCabem = Math.max(Math.floor(espacoParaBarras / linhaMinima), 1);
+
+    // Se tem mais tarefas do que cabe, reduz a altura da barra/padding
+    let barHeightFinal = barHeight;
+    let paddingFinal = padding;
+    if (tarefasComPrazo.length > linhasQueCabem) {
+        const fator = espacoParaBarras / (tarefasComPrazo.length * linhaMinima);
+        barHeightFinal = Math.max(Math.floor(barHeight * fator), 14);
+        paddingFinal = Math.max(Math.floor(padding * fator), 6);
+    }
+
     const tasksForGantt = tarefasComPrazo.map(t => {
         const dataInicio = t.data_criacao ? t.data_criacao.split('T')[0] : new Date().toISOString().split('T')[0];
         const dataFim = t.prazo;
 
-        let cor = '#F57C00'; // Padrão
+        let cor = '#F57C00';
         if (t.status === 'done') cor = '#4CAF50';
         if (t.status === 'approval') cor = '#2196F3';
         if (t.status === 'doing') cor = '#FF9800';
 
         return {
             id: String(t.id),
-            name: t.titulo.length > 30 ? t.titulo.substring(0, 30) + '...' : t.titulo,
+            name: t.titulo.length > 25 ? t.titulo.substring(0, 25) + '...' : t.titulo,
             start: dataInicio,
             end: dataFim,
             progress: t.status === 'done' ? 100 : (t.status === 'doing' ? 50 : 0),
@@ -1104,16 +1166,15 @@ function renderGantt() {
         };
     });
 
-    // Inicializa o Gantt com largura maior para tela cheia
     ganttChartInstance = new Gantt("#ganttContainer", tasksForGantt, {
-        header_height: 50,
-        column_width: 45, // Mais largo para tela cheia
+        header_height: headerHeight,
+        column_width: columnWidth,
         step: 24,
         view_modes: ['Day', 'Week', 'Month'],
-        bar_height: 24,
+        bar_height: barHeightFinal,
         bar_corner_radius: 3,
         arrow_curve: 5,
-        padding: 20,
+        padding: paddingFinal,
         view_mode: 'Day',
         date_format: 'YYYY-MM-DD',
         on_click: function (task) {
@@ -1123,6 +1184,22 @@ function renderGantt() {
             }
         }
     });
+
+    // --- Ajuste fino: força o SVG e o wrapper a caber no container ---
+    setTimeout(() => {
+        const svg = ganttContainer.querySelector('svg');
+        const wrapper = ganttContainer.querySelector('.gantt-container');
+        if (wrapper) {
+            wrapper.style.width = '100%';
+            wrapper.style.height = '100%';
+            wrapper.style.overflow = 'hidden';
+        }
+        if (svg) {
+            svg.style.maxWidth = '100%';
+            svg.style.height = '100%';
+            svg.setAttribute('preserveAspectRatio', 'xMinYMin meet');
+        }
+    }, 50);
 }
 
 // ============================================================
@@ -1167,6 +1244,14 @@ function configurarEventos() {
     if (filterStatus) {
         filterStatus.addEventListener('change', () => {
             currentFilter = filterStatus.value;
+            currentPage = 1;
+            render();
+        });
+    }
+
+    if (filterResponsavel) {
+        filterResponsavel.addEventListener('change', () => {
+            currentResponsavelFilter = filterResponsavel.value;
             currentPage = 1;
             render();
         });
@@ -1220,7 +1305,7 @@ function configurarEventos() {
             if (createModal.classList.contains('active')) closeCreateModal();
             if (editModal.classList.contains('active')) closeEditModal();
             if (confirmModal.classList.contains('active')) closeConfirmModal();
-            if (notificationModal.classList.contains('active')) {
+            if (notificationModal && notificationModal.classList.contains('active')) {
                 notificationModal.classList.remove('active');
                 document.body.classList.remove('modal-open');
             }

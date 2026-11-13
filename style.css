@@ -1618,7 +1618,7 @@ select[multiple] option:hover {
 }
 
 /* ============================================================
-   CORTINA LATERAL (GANTT EM TELA CHEIA)
+   CORTINA LATERAL (GANTT EM TELA CHEIA - SEM ROLAGEM)
    ============================================================ */
 
 .curtain-tab {
@@ -1648,7 +1648,6 @@ select[multiple] option:hover {
 
 .curtain-tab.open {
     left: 100%;
-    /* Vai para o final da tela */
     transform: translateY(-50%) rotate(180deg);
     border-radius: 8px 0 0 8px;
 }
@@ -1656,10 +1655,8 @@ select[multiple] option:hover {
 .curtain-panel {
     position: fixed;
     left: -100%;
-    /* Esconde totalmente */
     top: 0;
     width: 100%;
-    /* Ocupa a tela inteira */
     height: 100vh;
     background: white;
     z-index: 1000;
@@ -1667,6 +1664,8 @@ select[multiple] option:hover {
     transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    /* impede rolagem no painel */
 }
 
 .curtain-panel.open {
@@ -1677,9 +1676,11 @@ select[multiple] option:hover {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 24px;
+    padding: 20px 24px;
     border-bottom: 1px solid #e1e4e8;
     background: #f9f9f9;
+    flex-shrink: 0;
+    /* header não encolhe */
 }
 
 .curtain-header h2 {
@@ -1689,9 +1690,29 @@ select[multiple] option:hover {
 
 .curtain-content {
     padding: 0;
-    overflow-y: auto;
-    overflow-x: auto;
+    overflow: hidden;
     flex: 1;
-    font-size: 15px;
+    min-height: 0;
+    /* IMPORTANTE: permite o flex encolher */
     background: #f9f9f9;
+    position: relative;
+}
+
+/* Container do Gantt - ocupa exatamente o espaço disponível, sem rolar */
+#ganttContainer {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    padding: 0;
+}
+
+/* Ajustes no SVG do Gantt para caber na tela */
+#ganttContainer .gantt {
+    width: 100% !important;
+}
+
+#ganttContainer .gantt-container {
+    overflow: hidden !important;
+    height: 100% !important;
+    max-height: 100% !important;
 }
